@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ song['title'] }} · Songbook{% endblock %}
+
+{% block content %}
+<article class="edit-page song-form-page">
+  <a class="back-link" href="{{ url_for('song_detail', song_id=song['id']) }}">← Back to {{ song['title'] }}</a>
+
+  <header class="edit-head">
+    <p class="eyebrow">Edit song</p>
+    <h1>{{ song['title'] }}</h1>
+    <p class="edit-subtitle">Change the details, tuning, capo, rating or chord sheet.</p>
+  </header>
+
+  <form class="song-form" method="post" action="{{ url_for('save_song', song_id=song['id']) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if errors %}
+      <div class="form-errors" role="alert">
+        <p class="form-errors-title">Couldn't save that song.</p>
+        {% for error in errors %}<p>{{ error }}</p>{% endfor %}
+      </div>
+    {% endif %}
+
+    {% include "_song_fields.html" %}
+
+    <div class="editor-actions">
+      <button class="btn btn-primary" type="submit">Save changes</button>
+      <a class="btn btn-ghost" href="{{ url_for('song_detail', song_id=song['id']) }}">Cancel</a>
+    </div>
+  </form>
+</article>
+{% endblock %}

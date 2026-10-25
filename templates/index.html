@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% from "_macros.html" import static_stars %}
+
+{% block title %}Songbook{% endblock %}
+
+{% block content %}
+<section class="library-head">
+  <div class="library-heading">
+    <p class="eyebrow">Personal chord library</p>
+    <h1>Songbook</h1>
+    <p class="lede">Pick a song from the list or add something new. Tuning, capo and ratings stay with each song.</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('new_song') }}">
+    <span aria-hidden="true">+</span>
+    Add a song
+  </a>
+</section>
+
+<section class="songbook" aria-labelledby="songbook-heading">
+  <div class="toolbar">
+    <h2 id="songbook-heading">All songs <span class="count">{{ total }}</span></h2>
+    <form class="filters" method="get" action="{{ url_for('index') }}" role="search">
+      <input type="search" name="q" value="{{ query }}" placeholder="Search title or artist" aria-label="Search songs" autocomplete="off">
+      <select name="sort" aria-label="Sort songs" onchange="this.form.submit()">
+        <option value="recent" {% if sort == 'recent' %}selected{% endif %}>Recently added</option>
+        <option value="title" {% if sort == 'title' %}selected{% endif %}>Title A–Z</option>
+        <option value="artist" {% if sort == 'artist' %}selected{% endif %}>Artist A–Z</option>
+        <option value="rating" {% if sort == 'rating' %}selected{% endif %}>Best rated</option>
+      </select>
+      <button class="btn btn-ghost" type="submit">Search</button>
+    </form>
+  </div>
+
+  {% if songs %}
+    <div class="song-list" role="list">
+      <div class="song-list-head" aria-hidden="true">
+        <span>Song</span>
+        <span>Artist</span>
+        <span>Capo</span>
+        <span>Tuning</span>
+        <span>Rating</span>
+        <span></span>
+      </div>
+      {% for song in songs %}
+        <a class="song-row" href="{{ url_for('song_detail', song_id=song['id']) }}" role="listitem">
+          <span class="song-title">{{ song['title'] }}</span>
+          <span class="song-artist">{{ song['artist'] }}</span>
+          <span class="song-cell song-capo">
+            <span class="song-cell-label">Capo</span>
+            <span class="song-cell-value">{{ song['capo'] or '—' }}</span>
+          </span>
+          <span class="song-cell song-tuning" title="{{ song['tuning'] }}">
+            <span class="song-cell-label">Tuning</span>
+            <span class="song-cell-value">{{ song['tuning']|tuning_label }}</span>
+          </span>
+          <span class="song-cell song-rating">
+            <span class="song-cell-label">Rating</span>
+            <span class="song-cell-value">{{ static_stars(song['rating']) }}</span>
+          </span>
+          <span class="song-chevron" aria-hidden="true">→</span>
+        </a>
+      {% endfor %}
+    </div>
+  {% elif total == 0 %}
+    <div class="empty-state">
+      <p class="empty-title">Your songbook is empty</p>
+      <p><a href="{{ url_for('new_song') }}">Add your first song</a> and it will show up here.</p>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <p class="empty-title">No songs match “{{ query }}”</p>
+      <p><a href="{{ url_for('index') }}">Clear the search</a> to see all {{ total }} songs.</p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Songbook{% endblock %}</title>
+  <meta name="description" content="A personal songbook for chords and lyrics: capo, performance rating and fixed-width chords.">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script>
+    try {
+      if (localStorage.getItem("songbook:wide") === "1") {
+        document.documentElement.classList.add("is-wide");
+      }
+    } catch (error) {}
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="{{ url_for('index') }}" aria-label="Songbook home">
+        <svg class="brand-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 2.8c3.2 3 5.8 6.2 5.8 9.8a5.8 5.8 0 0 1-11.6 0c0-3.6 2.6-6.8 5.8-9.8Z"/>
+          <path d="M9.4 11.4h5.2M9.4 13.9h5.2M9.9 16.4h4.2" stroke-linecap="round"/>
+        </svg>
+        <span class="brand-name">Songbook</span>
+      </a>
+      <nav class="site-nav" aria-label="Main">
+        {% if session.get('authenticated') %}
+          <a href="{{ url_for('index') }}">Library</a>
+          <button type="button" class="wide-toggle" id="wide-toggle" aria-pressed="false" aria-label="Use the full window width" title="Toggle full-width layout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/>
+            </svg>
+            <span>Wide</span>
+          </button>
+          <a class="nav-add" href="{{ url_for('new_song') }}">Add song</a>
+          <form class="nav-logout" method="post" action="{{ url_for('logout') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit">Log out</button>
+          </form>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flashes">
+          {% for category, message in messages %}
+            <p class="flash flash-{{ category }}">{{ message }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p>Chords and lyrics belong to their authors.</p>
+      {% if session.get('authenticated') %}
+        <a href="{{ url_for('import_songbook') }}">Import songbook</a>
+        <a href="{{ url_for('export_songbook') }}">Export songbook</a>
+      {% endif %}
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>

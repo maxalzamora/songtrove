@@ -1,0 +1,55 @@
+<div class="form-grid">
+  <div class="field field-title">
+    <label for="title">Title</label>
+    <input id="title" name="title" type="text" value="{{ form.title }}" maxlength="200" autocomplete="off" required>
+  </div>
+
+  <div class="field field-artist">
+    <label for="artist">Artist</label>
+    <input id="artist" name="artist" type="text" value="{{ form.artist }}" maxlength="200" autocomplete="off" required>
+  </div>
+
+  <div class="field field-tuning">
+    <label for="tuning">Tuning</label>
+    <input id="tuning" name="tuning" type="text" value="{{ form.tuning }}" maxlength="80" list="tuning-options" placeholder="E A D G B E" autocomplete="off">
+    <datalist id="tuning-options">
+      <option value="E A D G B E">Standard</option>
+      <option value="Eb Ab Db Gb Bb Eb">E-flat standard</option>
+      <option value="D A D G B E">Drop D</option>
+      <option value="D G C F A D">D standard</option>
+      <option value="D A D F# A D">Open D</option>
+      <option value="D G D G B D">Open G</option>
+      <option value="D A D G A D">DADGAD</option>
+    </datalist>
+  </div>
+
+  <div class="field field-capo">
+    <label for="capo">Capo</label>
+    <input id="capo" name="capo" type="number" min="0" max="12" step="1" value="{{ form.capo }}" inputmode="numeric">
+  </div>
+
+  <div class="field field-rating">
+    <label for="rating">Rating</label>
+    <select id="rating" name="rating">
+      {% set current_rating = form.rating|int %}
+      <option value="0" {% if current_rating == 0 %}selected{% endif %}>Not rated</option>
+      {% for i in range(1, 6) %}
+        <option value="{{ i }}" {% if current_rating == i %}selected{% endif %}>{{ i }} star{{ 's' if i != 1 else '' }}</option>
+      {% endfor %}
+    </select>
+  </div>
+</div>
+
+<div class="field field-sheet">
+  <div class="editor-bar">
+    <label for="sheet-text">Chords &amp; lyrics</label>
+    <span class="editor-hint">Spacing is preserved exactly.</span>
+  </div>
+  <textarea id="sheet-text" name="content" class="sheet-editor" wrap="off" spellcheck="false" autocomplete="off" autocapitalize="off" aria-describedby="sheet-help" required>{{ form.content }}</textarea>
+  <p class="editor-help" id="sheet-help">
+    Chord-only lines such as <code>G   D   Em</code> are detected and
+    highlighted automatically. Keep section lines such as
+    <code>[Verse]</code> or <code>[Chorus]</code>; Fit to screen uses them
+    to start new columns.
+  </p>
+</div>

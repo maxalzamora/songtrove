@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Import songbook · Songbook{% endblock %}
+
+{% block content %}
+<article class="edit-page song-form-page">
+  <a class="back-link" href="{{ url_for('index') }}">← Back to songbook</a>
+
+  <header class="edit-head">
+    <p class="eyebrow">Restore</p>
+    <h1>Import songbook</h1>
+    <p class="edit-subtitle">
+      Upload a JSON file exported from this songbook. Imported songs are added
+      after the songs you already have.
+    </p>
+  </header>
+
+  <form class="song-form" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    {% if errors %}
+      <div class="form-errors" role="alert">
+        <p class="form-errors-title">Couldn't import that file.</p>
+        {% for error in errors %}<p>{{ error }}</p>{% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="field">
+      <label for="songbook">Exported JSON file</label>
+      <input id="songbook" name="songbook" type="file" accept="application/json,.json" required>
+      <p class="field-help">
+        Make a backup with <strong>Export songbook</strong> in the footer. The
+        import keeps titles, artists, tunings, capos, ratings and chord sheets.
+      </p>
+    </div>
+
+    <div class="editor-actions">
+      <button class="btn btn-primary" type="submit">Import songs</button>
+      <a class="btn btn-ghost" href="{{ url_for('index') }}">Cancel</a>
+    </div>
+  </form>
+</article>
+{% endblock %}

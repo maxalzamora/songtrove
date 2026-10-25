@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: songbook
+    runtime: python
+    plan: starter
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: gunicorn --workers 1 --bind 0.0.0.0:$PORT app:app
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.6
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SONGBOOK_USERNAME
+        value: songbook
+      - key: SONGBOOK_PASSWORD_HASH
+        sync: false
+      - key: SONGBOOK_DB
+        value: /var/data/songbook.db
+      - key: SONGBOOK_SECURE_COOKIES
+        value: "1"
+    disk:
+      name: songbook-data
+      mountPath: /var/data
+      sizeGB: 1

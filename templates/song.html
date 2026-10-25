@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}{{ song['title'] }} · Songbook{% endblock %}
+
+{% block content %}
+<article class="song">
+  <a class="back-link" href="{{ url_for('index') }}">← All songs</a>
+
+  <header class="song-head">
+    <p class="eyebrow">{{ song['artist'] }}</p>
+    <div class="title-row">
+      <h1>{{ song['title'] }}</h1>
+      <a class="btn btn-ghost btn-small" href="{{ url_for('edit_song', song_id=song['id']) }}" title="Edit the song details and chord sheet">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 20h9"/>
+          <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+        </svg>
+        Edit song
+      </a>
+    </div>
+    <div class="chips">
+      <span class="chip chip-accent">{{ 'Capo ' ~ song['capo'] if song['capo'] else 'No capo' }}</span>
+      <span class="chip">{{ song['tuning']|tuning_label }}</span>
+      <span class="chip chip-quiet">Added {{ song['created_at']|pretty_date }}</span>
+    </div>
+  </header>
+
+  <section class="settings" aria-label="Song settings">
+    <form id="settings-form" class="settings-form" method="post" action="{{ url_for('update_song', song_id=song['id']) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="setting">
+        <label class="setting-label" for="capo">Capo</label>
+        <div class="stepper">
+          <button type="button" class="step" data-step="-1" aria-label="Decrease capo">−</button>
+          <input id="capo" name="capo" type="number" min="0" max="12" step="1" value="{{ song['capo'] }}" inputmode="numeric" aria-describedby="capo-help" title="Chords are transposed down so the song keeps its original pitch.">
+          <button type="button" class="step" data-step="1" aria-label="Increase capo">+</button>
+        </div>
+        <span class="setting-note" id="capo-help">0 = none · shapes transpose with capo</span>
+      </div>
+
+      <div class="setting">
+        <span class="setting-label" id="performance-label">Performance</span>
+        <div class="stars" id="stars" data-rating="{{ song['rating'] }}" role="group" aria-labelledby="performance-label">
+          {% for i in range(1, 6) %}
+            <button
+              type="submit"
+              class="star{% if i <= song['rating'] %} is-on{% endif %}"
+              name="rating"
+              value="{{ i }}"
+              data-value="{{ i }}"
+              aria-label="{{ i }} out of 5 stars"
+              aria-pressed="{{ 'true' if i <= song['rating'] else 'false' }}">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 3.1l2.72 5.62 6.18.88-4.48 4.32 1.06 6.14L12 17.13l-5.48 2.93 1.06-6.14L3.1 9.6l6.18-.88L12 3.1z"/>
+              </svg>
+            </button>
+          {% endfor %}
+          <button type="submit" class="star-clear" name="rating" value="0" id="clear-rating" {% if not song['rating'] %}hidden{% endif %}>Clear</button>
+        </div>
+      </div>
+
+      <div class="setting-actions">
+        <button class="btn btn-primary" type="submit" id="save-btn">Save</button>
+        <span class="save-status" id="save-status" role="status" aria-live="polite"></span>
+      </div>
+    </form>
+  </section>
+
+  <section class="sheet-panel" aria-labelledby="sheet-heading">
+    <div class="sheet-bar">
+      <h2 id="sheet-heading">Chords &amp; lyrics</h2>
+      <div class="sheet-tools">
+        <span class="fit-note" id="fit-note" hidden>Scroll for the rest</span>
+        <span class="sheet-hint" id="transpose-hint" title="Chords are transposed down so the song keeps its original pitch.">
+          {% if song['capo'] %}Chords for capo {{ song['capo'] }}{% else %}Original chords{% endif %}
+        </span>
+        <span class="sheet-hint">Fixed-width · spacing preserved</span>
+        <button type="button" class="btn btn-ghost btn-small" id="fit-toggle" hidden aria-pressed="false" title="Fill the screen with columns (Esc to exit)">
+          <svg class="icon-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/>
+          </svg>
+          <svg class="icon-collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5"/>
+          </svg>
+          <span id="fit-label">Fit to screen</span>
+        </button>
+      </div>
+    </div>
+    <p class="sr-only" id="fit-status" role="status" aria-live="polite"></p>
+    <div class="sheet-scroll" id="sheet-scroll">
+      <pre class="sheet" id="sheet-source">{{ sheet_html|safe }}</pre>
+      <div class="sheet-columns" id="sheet-columns" hidden></div>
+    </div>
+  </section>
+
+  <div class="song-actions">
+    <form method="post" action="{{ url_for('delete_song', song_id=song['id']) }}" data-confirm="Remove “{{ song['title']|e }}” from your songbook?">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-danger" type="submit">Delete song</button>
+    </form>
+  </div>
+</article>
+{% endblock %}

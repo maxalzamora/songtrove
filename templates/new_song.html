@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Add a song · Songbook{% endblock %}
+
+{% block content %}
+<article class="edit-page song-form-page">
+  <a class="back-link" href="{{ url_for('index') }}">← Back to songbook</a>
+
+  <header class="edit-head">
+    <p class="eyebrow">New entry</p>
+    <h1>Add a song</h1>
+    <p class="edit-subtitle">Paste the chords and lyrics, then fill in the details you want to keep.</p>
+  </header>
+
+  <form class="song-form" method="post" action="{{ url_for('new_song') }}" data-add-form>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if errors %}
+      <div class="form-errors" role="alert">
+        <p class="form-errors-title">Couldn't add that song.</p>
+        {% for error in errors %}<p>{{ error }}</p>{% endfor %}
+      </div>
+    {% endif %}
+
+    {% include "_song_fields.html" %}
+
+    <div class="editor-actions">
+      <button class="btn btn-primary" type="submit">Add song</button>
+      <a class="btn btn-ghost" href="{{ url_for('index') }}">Cancel</a>
+    </div>
+  </form>
+</article>
+{% endblock %}
