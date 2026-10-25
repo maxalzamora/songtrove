@@ -10,16 +10,19 @@ stay out of the repository.
 
 ## 1. Put the project on GitHub
 
-This environment does not have `git` installed, so run these commands on a
-computer that does, or create the repository with GitHub Desktop:
+The project is already a Git repository with an initial commit on `main`. Create
+an empty **private** repository on GitHub, then connect it and push:
 
 ```bash
-cd /path/to/songbook
-git init
-git add .
-git commit -m "Build self-hosted guitar songbook"
-git branch -M main
+cd /home/test_guitar
 git remote add origin git@github.com:YOUR-NAME/songbook.git
+git push -u origin main
+```
+
+Use the HTTPS URL instead if you authenticate with a personal access token:
+
+```bash
+git remote add origin https://github.com/YOUR-NAME/songbook.git
 git push -u origin main
 ```
 
