@@ -70,7 +70,13 @@ deploy on every push.
 ### Create the account and install
 
 Create a free **Beginner** account at <https://www.pythonanywhere.com/>, then
-open a **Bash console**. Clone the repository:
+open a **Bash console**. Check which Python version it provides:
+
+```bash
+python3 --version
+```
+
+Use that exact version when creating the web app below. Clone the repository:
 
 ```bash
 cd ~
