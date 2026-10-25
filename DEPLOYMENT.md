@@ -1,9 +1,8 @@
 # Deployment
 
 The app is a single-user Flask service with a password-protected login, CSRF
-protection, and SQLite storage. It runs behind Gunicorn in production. The
-included `render.yaml` deploys it from GitHub to Render; the `deploy/` files run
-the same app on a VPS with systemd and Caddy.
+protection, and SQLite storage. The `deploy/` files run it on a free
+PythonAnywhere account or a VPS; `render.yaml` deploys it from GitHub to Render.
 
 Do not commit `data/` or `.env`. The songbook database and password hash must
 stay out of the repository.
@@ -56,7 +55,89 @@ python3 manage.py hash-password
 Never put the plain password in a repository, a build command, or a
 `render.yaml` file.
 
-## 3. Option A: Render from GitHub
+## 3. Option A: PythonAnywhere (free, no card)
+
+PythonAnywhere's free Beginner account is the simplest zero-cost option that
+keeps SQLite on a persistent disk. It includes one Python web app at
+`https://USERNAME.pythonanywhere.com` with free HTTPS.
+
+Free-plan limits: no custom domain, 512 MB of file storage, one web worker, a
+CPU allowance, and outbound internet access only to whitelisted hosts. The
+songbook does not need outbound internet, so those limits are fine for a
+personal library. GitHub updates are pulled manually; there is no automatic
+deploy on every push.
+
+### Create the account and install
+
+Create a free **Beginner** account at <https://www.pythonanywhere.com/>, then
+open a **Bash console**. Clone the repository:
+
+```bash
+cd ~
+git clone https://github.com/maxalzamora/Songbook.git Songbook
+```
+
+If the repository is private, Git prompts for a username and password. Use your
+GitHub username and a **fine-grained personal access token** with read-only
+access to the repository's contents as the password. Do not put the token in
+the repository or in a shell profile.
+
+Install the dependencies and create the local environment file:
+
+```bash
+cd ~/Songbook
+python3 -m pip install --user -r requirements.txt
+python3 manage.py set-password
+sed -i 's/^SONGBOOK_SECURE_COOKIES=0/SONGBOOK_SECURE_COOKIES=1/' .env
+```
+
+The `set-password` command writes a hashed password and a `SECRET_KEY` to
+`.env`. The `sed` command makes the session cookie HTTPS-only. Confirm that
+`.env` contains the absolute database path for this account, for example
+`/home/USERNAME/Songbook/data/songbook.db`.
+
+### Configure the web app
+
+In the PythonAnywhere **Web** tab:
+
+1. Choose **Add a new web app**.
+2. Choose **Manual configuration** and select the same Python version you used
+   above (for example Python 3.13).
+3. Set **Source code** and **Working directory** to `/home/USERNAME/Songbook`.
+4. Open the **WSGI configuration file** and replace its contents with
+   `deploy/pythonanywhere_wsgi.py`. The file finds the repository at
+   `~/Songbook`.
+5. Under **Static files**, add:
+   - URL: `/static/`
+   - Directory: `/home/USERNAME/Songbook/static`
+6. Leave **Virtualenv** blank because the packages were installed with
+   `--user`.
+7. Click **Reload**.
+
+Open `https://USERNAME.pythonanywhere.com`, log in with username `songbook`
+and the password you chose above.
+
+### Move the existing songs
+
+In the local app, use **Export songbook** in the footer to download
+`songbook.json`. On the PythonAnywhere site, log in and open **Import songbook**
+to upload that file. The import keeps titles, artists, tunings, capos, ratings
+and chord sheets.
+
+### Update after pushing to GitHub
+
+In the PythonAnywhere Bash console:
+
+```bash
+cd ~/Songbook
+git pull
+python3 -m pip install --user -r requirements.txt
+```
+
+Then click **Reload** in the Web tab. The ignored `.env` and `data/` files are
+not touched by `git pull`, so the password and songs stay in place.
+
+## 4. Option A: Render from GitHub
 
 The blueprint uses a paid Starter instance because Render persistent disks are
 not available on the free instance. Without a disk, the SQLite database is lost
@@ -82,7 +163,7 @@ To move an existing songbook to Render, use **Export songbook** in the local
 app's footer, then log in to the deployed app and open **Import songbook** to
 upload that JSON file. Keep a copy of the export outside the host as a backup.
 
-## 4. Option B: VPS from GitHub
+## 5. Option B: VPS from GitHub
 
 These steps assume Ubuntu 24.04 or Debian 12, a domain whose DNS `A` record
 points at the server, and a non-root SSH user with `sudo`.

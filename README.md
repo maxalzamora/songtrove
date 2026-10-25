@@ -106,7 +106,8 @@ songs, capo settings, ratings and IDs are preserved.
 
 ## Deployment
 
-`DEPLOYMENT.md` covers the GitHub workflow, Render deployment with a persistent
+`DEPLOYMENT.md` covers the GitHub workflow, a free PythonAnywhere deployment
+that keeps SQLite on a persistent disk, Render deployment with a persistent
 disk, and a VPS setup using Gunicorn, systemd and Caddy. `render.yaml` and
 `Procfile` are ready for a host that builds from GitHub. Never commit `.env` or
 the `data/` folder.
