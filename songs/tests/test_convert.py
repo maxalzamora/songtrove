@@ -90,3 +90,8 @@ def test_mixed_content_keeps_words_intact():
     result = convert(body)
 
     assert result.text == "Verse 1\n[G]Amazing [C]grace"
+
+
+@pytest.mark.parametrize("symbol", ["C/H", "C/", "Gm/xyz"])
+def test_rejects_a_bass_note_that_is_not_a_note(symbol):
+    assert not is_chord(symbol)

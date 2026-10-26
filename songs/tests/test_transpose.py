@@ -104,3 +104,14 @@ def test_transpose_key_keeps_flat_preference():
 def test_transpose_unknown_key_is_unchanged():
     assert transpose_key("", 2) == ""
     assert transpose_key("H", 2) == "H"
+
+
+def test_automatic_spelling_prefers_flats_for_flat_keys():
+    # A chord with no accidental of its own lands on the spelling guitarists
+    # reach for: Eb and Bb, not D# and A#.
+    assert transpose_chord("D", 1) == "Eb"
+    assert transpose_chord("A", 1) == "Bb"
+    assert transpose_chord("G", 1) == "Ab"
+    # Naturals stay natural, and C# keeps its sharp.
+    assert transpose_chord("E", 1) == "F"
+    assert transpose_chord("C", 1) == "C#"

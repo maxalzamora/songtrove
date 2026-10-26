@@ -75,3 +75,7 @@ def test_plan_is_hashable_and_frozen():
 
     with pytest.raises(AttributeError):
         plan.capo = 3
+
+
+def test_written_key_for_an_unknown_key_is_empty():
+    assert written_key_for("", 3) == ""

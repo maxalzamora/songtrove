@@ -105,3 +105,16 @@ def test_unusual_chords_survive_parsing(symbol):
 
 def test_empty_sheet():
     assert parse_sheet("") == []
+
+
+def test_segment_knows_whether_it_has_a_chord():
+    line = parse_line("[G]Amazing [C]grace")
+
+    assert [segment.has_chord for segment in line.segments] == [True, True]
+    assert parse_line("no chords here").segments[0].has_chord is False
+
+
+def test_section_markers_are_directives_with_known_names():
+    assert parse_line("{start_of_chorus}").is_section_marker
+    assert not parse_line("{x_custom}").is_section_marker
+    assert not parse_line("just a lyric").is_section_marker

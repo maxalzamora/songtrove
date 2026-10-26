@@ -283,3 +283,10 @@ def test_form_rejects_overlong_tag(max):
 
     assert not form.is_valid()
     assert "tags_input" in form.errors
+
+
+def test_form_ignores_empty_tag_pieces(max):
+    form = SongForm(data=payload(tags_input="folk, ,  , blues ,"), owner=max)
+
+    assert form.is_valid()
+    assert form.cleaned_data["tags_input"] == ["folk", "blues"]
