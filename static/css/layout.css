@@ -265,6 +265,15 @@
   border-color: color-mix(in srgb, var(--color-danger) 45%, var(--color-border));
 }
 
+.alert--warning {
+  border-color: color-mix(in srgb, var(--color-star) 50%, var(--color-border));
+  background: color-mix(in srgb, var(--color-star) 10%, transparent);
+}
+
+.alert--info {
+  border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
+}
+
 /* ---------- Landing ---------- */
 
 .hero {
@@ -649,6 +658,18 @@ a.song-card:hover {
   min-height: 18rem;
   resize: vertical;
   tab-size: 2;
+}
+
+.form-hint-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: -0.25rem;
+}
+
+.form-hint-row .field__help {
+  margin: 0;
 }
 
 /* ---------- Stars and rating ---------- */

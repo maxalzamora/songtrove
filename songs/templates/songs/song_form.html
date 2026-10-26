@@ -55,6 +55,15 @@
         <legend>The sheet</legend>
         {% include "songs/_field.html" with field=form.sheet_format %}
         {% include "songs/_field.html" with field=form.sheet_body %}
+
+        <div class="form-hint-row">
+          <button class="btn btn--ghost btn--sm" type="submit" name="action" value="convert">
+            Convert pasted text to ChordPro
+          </button>
+          <span class="field__help">
+            Paste a chords-above-lyrics sheet, then convert it into something transposable.
+          </span>
+        </div>
       </fieldset>
 
       <fieldset class="form-section">

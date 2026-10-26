@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from .chords import plan_for, transpose_key
+from .chords.convert import convert
 from .chords.theory import KEY_CHOICES
 from .forms import SongForm
 from .models import Song
@@ -109,8 +110,37 @@ def song_detail(request, pk):
     return render(request, "songs/song_detail.html", context)
 
 
+def _convert_sheet(request, song=None):
+    """Re-render the form with the pasted sheet converted to ChordPro."""
+    result = convert(request.POST.get("sheet_body", ""))
+
+    initial = {key: request.POST.get(key, "") for key in request.POST}
+    initial["sheet_body"] = result.text
+    initial["sheet_format"] = Song.SheetFormat.CHORDPRO
+
+    if result.already_chordpro:
+        messages.info(request, "That sheet already looks like ChordPro, so nothing changed.")
+    elif result.chord_lines:
+        messages.success(
+            request,
+            f"Converted {result.chord_lines} chord line{'' if result.chord_lines == 1 else 's'} "
+            "to ChordPro. Check the alignment, then save.",
+        )
+    else:
+        messages.warning(
+            request,
+            "No chord lines found. Chords need to sit on their own line above the lyric line.",
+        )
+
+    form = SongForm(initial=initial, instance=song, owner=request.user)
+    return render(request, "songs/song_form.html", {"form": form, "song": song})
+
+
 @login_required
 def song_create(request):
+    if request.method == "POST" and request.POST.get("action") == "convert":
+        return _convert_sheet(request)
+
     form = SongForm(request.POST or None, owner=request.user)
 
     if request.method == "POST" and form.is_valid():
@@ -124,6 +154,10 @@ def song_create(request):
 @login_required
 def song_update(request, pk):
     song = get_object_or_404(request.user.songs, pk=pk)
+
+    if request.method == "POST" and request.POST.get("action") == "convert":
+        return _convert_sheet(request, song)
+
     form = SongForm(request.POST or None, instance=song, owner=request.user)
 
     if request.method == "POST" and form.is_valid():
