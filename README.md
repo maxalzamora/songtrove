@@ -164,3 +164,7 @@ so an uptime monitor can tell a real outage from a slow page.
 This is deliberately a small app. Version one has no setlists, no performance
 history log and no sharing between accounts. The goal is a tool that is quick
 to open on a phone before a song, not a platform.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
