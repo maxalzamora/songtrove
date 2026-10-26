@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Your library — SongTrove{% endblock %}
+
+{% block content %}
+  <div class="container">
+    <header class="page-head">
+      <div>
+        <h1>Your library</h1>
+        <p class="page-head__meta">
+          {{ songs|length }} song{{ songs|length|pluralize }}
+        </p>
+      </div>
+    </header>
+
+    {% if songs %}
+      <div class="song-grid">
+        {% for song in songs %}
+          <article class="card song-card">
+            <div class="song-card__title">{{ song.title }}</div>
+            {% if song.artist %}
+              <div class="song-card__artist">{{ song.artist }}</div>
+            {% endif %}
+
+            <div class="song-card__meta">
+              {% if song.display_key %}
+                <span class="chip">{{ song.display_key }}</span>
+              {% endif %}
+              {% if song.capo %}
+                <span class="chip chip--muted">Capo {{ song.capo }}</span>
+              {% endif %}
+              <span class="chip" data-status="{{ song.status }}">{{ song.get_status_display }}</span>
+              {% for tag in song.tags.all|slice:":3" %}
+                <span class="chip chip--muted">#{{ tag.name }}</span>
+              {% endfor %}
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <h2>No songs yet</h2>
+        <p>Your library is empty. The first sheet is the hardest.</p>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

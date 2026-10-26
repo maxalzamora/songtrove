@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}SongTrove — your chord sheets, keys and capos{% endblock %}
+
+{% block content %}
+  <div class="container">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Chord sheets that remember how you play</p>
+        <h1>Every song, its capo, and how ready you really are.</h1>
+        <p class="hero__lede">
+          SongTrove keeps your chord sheets in one place, with the details you actually
+          need at the stand: the key, where the capo goes, and a rating for how well
+          you can play it tonight.
+        </p>
+
+        <div class="hero__actions">
+          <a class="btn btn--primary" href="{% url 'signup' %}">Start your library</a>
+          <a class="btn btn--ghost" href="{% url 'login' %}">Log in</a>
+        </div>
+      </div>
+
+      <div class="card preview" aria-hidden="true">
+        <div class="preview__head">
+          <div>
+            <div class="preview__title">Amazing Grace</div>
+            <div class="preview__meta">Traditional · G · capo 2</div>
+          </div>
+          <span class="preview__meta">★★★★☆</span>
+        </div>
+        <div class="preview__body">
+          <div class="chord-sheet">
+            <div class="chord-sheet__line">
+              <span class="chord-cell"><span class="chord-cell__chord">G</span><span class="chord-cell__lyric">Amazing </span></span>
+              <span class="chord-cell"><span class="chord-cell__chord">C</span><span class="chord-cell__lyric">grace, how </span></span>
+              <span class="chord-cell"><span class="chord-cell__chord">G</span><span class="chord-cell__lyric">sweet the </span></span>
+              <span class="chord-cell"><span class="chord-cell__chord">D</span><span class="chord-cell__lyric">sound</span></span>
+            </div>
+            <div class="chord-sheet__gap"></div>
+            <div class="chord-sheet__line">
+              <span class="chord-cell"><span class="chord-cell__chord">G</span><span class="chord-cell__lyric">That saved a </span></span>
+              <span class="chord-cell"><span class="chord-cell__chord">C</span><span class="chord-cell__lyric">wretch like </span></span>
+              <span class="chord-cell"><span class="chord-cell__chord">G</span><span class="chord-cell__lyric">me</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="feature-grid" aria-label="What SongTrove does">
+      <article class="card feature">
+        <h2>Chords where they belong</h2>
+        <p>
+          ChordPro sheets render as chords above lyrics, so a line reads like sheet
+          music instead of a wall of brackets.
+        </p>
+      </article>
+      <article class="card feature">
+        <h2>Capo maths, done</h2>
+        <p>
+          See the key you finger and the key that comes out, side by side. Transpose
+          the whole sheet without breaking its spelling.
+        </p>
+      </article>
+      <article class="card feature">
+        <h2>Know what's ready</h2>
+        <p>
+          Rate each song out of five and mark it as learning, practising or gig ready.
+          Filter the library before you load the van.
+        </p>
+      </article>
+    </section>
+  </div>
+{% endblock %}
