@@ -1,0 +1,17 @@
+{% if is_plain %}
+  <pre class="chord-sheet chord-sheet--plain">{{ plain_body }}</pre>
+{% else %}
+  <div class="chord-sheet">
+    {% for row in rows %}
+      {% if row.kind == "blank" %}
+        <div class="chord-sheet__gap"></div>
+      {% elif row.kind == "comment" %}
+        <p class="chord-sheet__comment">{{ row.text }}</p>
+      {% else %}
+        <div class="chord-sheet__line">{% spaceless %}
+          {% for cell in row.cells %}<span class="chord-cell{% if cell.is_bare %} chord-cell--bare{% endif %}">{% if cell.chord %}<span class="chord-cell__chord">{{ cell.chord }}</span>{% endif %}<span class="chord-cell__lyric">{{ cell.lyric }}</span></span>{% endfor %}
+        {% endspaceless %}</div>
+      {% endif %}
+    {% endfor %}
+  </div>
+{% endif %}

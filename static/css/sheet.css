@@ -1,0 +1,56 @@
+/* The chord sheet itself: monospace, chords glued above their syllables. */
+
+.chord-sheet {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  overflow-x: auto;
+  padding: 0.25rem 0;
+}
+
+.chord-sheet--plain {
+  margin: 0;
+  white-space: pre;
+}
+
+.chord-sheet__line {
+  display: block;
+  min-height: 1.45em;
+}
+
+.chord-sheet__gap {
+  height: 0.85em;
+}
+
+.chord-sheet__comment {
+  margin: 0.9em 0 0.15em;
+  color: var(--color-muted);
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.chord-cell {
+  display: inline-block;
+  vertical-align: bottom;
+  white-space: pre;
+}
+
+.chord-cell__chord {
+  display: block;
+  color: var(--color-chord);
+  font-weight: 700;
+  white-space: pre;
+}
+
+.chord-cell__lyric {
+  display: block;
+  white-space: pre;
+}
+
+/* A chord with no syllable still needs room, or the next chord sits on it. */
+.chord-cell--bare {
+  min-width: 3.5ch;
+}
