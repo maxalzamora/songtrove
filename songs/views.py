@@ -1,12 +1,18 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from .chords import plan_for, transpose_key
+from .chords.theory import KEY_CHOICES
 from .forms import SongForm
 from .models import Song
+
+CAPO_VALUES = {str(fret) for fret in range(0, 13)}
+RATING_VALUES = {str(stars) for stars in range(1, 6)}
+KEY_VALUES = {name for name, _ in KEY_CHOICES}
 
 
 def _parse_transpose(raw: str | None) -> int:
@@ -20,9 +26,67 @@ def _parse_transpose(raw: str | None) -> int:
 
 @login_required
 def song_list(request):
-    """The signed-in user's library."""
+    """The signed-in user's library, with search and filters."""
+    params = request.GET
+
+    query = params.get("q", "").strip()
+    status = params.get("status", "").strip()
+    key = params.get("key", "").strip()
+    capo = params.get("capo", "").strip()
+    rating = params.get("rating", "").strip()
+    tag = params.get("tag", "").strip()
+
+    # Unknown values are dropped rather than erroring, so a stale bookmark or a
+    # hand-edited query string still shows a useful page.
+    if status not in Song.Status.values:
+        status = ""
+    if key not in KEY_VALUES:
+        key = ""
+    if capo not in CAPO_VALUES:
+        capo = ""
+    if rating not in RATING_VALUES:
+        rating = ""
+
     songs = request.user.songs.prefetch_related("tags")
-    return render(request, "songs/song_list.html", {"songs": songs})
+
+    if query:
+        songs = songs.filter(
+            Q(title__icontains=query)
+            | Q(artist__icontains=query)
+            | Q(tags__name__icontains=query)
+        ).distinct()
+    if status:
+        songs = songs.filter(status=status)
+    if key:
+        songs = songs.filter(song_key=key)
+    if capo:
+        songs = songs.filter(capo=int(capo))
+    if rating:
+        songs = songs.filter(rating__gte=int(rating))
+    if tag:
+        songs = songs.filter(tags__name__iexact=tag).distinct()
+
+    filters = {
+        "q": query,
+        "status": status,
+        "key": key,
+        "capo": capo,
+        "rating": rating,
+        "tag": tag,
+    }
+
+    context = {
+        "songs": songs,
+        "total": request.user.songs.count(),
+        "filters": filters,
+        "has_filters": any(filters.values()),
+        "status_choices": Song.Status.choices,
+        "key_choices": KEY_CHOICES,
+        "capo_choices": [("0", "No capo")] + [(str(n), f"Fret {n}") for n in range(1, 13)],
+        "rating_choices": [(str(n), f"{n}+ stars") for n in range(1, 6)],
+        "tags": request.user.tags.all(),
+    }
+    return render(request, "songs/song_list.html", context)
 
 
 @login_required

@@ -8,11 +8,77 @@
       <div>
         <h1>Your library</h1>
         <p class="page-head__meta">
-          {{ songs|length }} song{{ songs|length|pluralize }}
+          {% if has_filters %}
+            {{ songs|length }} of {{ total }} song{{ total|pluralize }}
+          {% else %}
+            {{ total }} song{{ total|pluralize }}
+          {% endif %}
         </p>
       </div>
       <a class="btn btn--primary btn--sm" href="{% url 'songs:song_create' %}">New song</a>
     </header>
+
+    <form class="card filters" method="get" role="search">
+      <div class="filters__row">
+        <label class="visually-hidden" for="filter-q">Search your library</label>
+        <input
+          class="filters__search"
+          id="filter-q"
+          type="search"
+          name="q"
+          value="{{ filters.q }}"
+          placeholder="Search title, artist or tag"
+        >
+
+        <label class="visually-hidden" for="filter-status">Status</label>
+        <select id="filter-status" name="status">
+          <option value="">Any status</option>
+          {% for value, label in status_choices %}
+            <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+
+        <label class="visually-hidden" for="filter-key">Key</label>
+        <select id="filter-key" name="key">
+          <option value="">Any key</option>
+          {% for value, label in key_choices %}
+            <option value="{{ value }}" {% if filters.key == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+
+        <label class="visually-hidden" for="filter-capo">Capo</label>
+        <select id="filter-capo" name="capo">
+          <option value="">Any capo</option>
+          {% for value, label in capo_choices %}
+            <option value="{{ value }}" {% if filters.capo == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+
+        <label class="visually-hidden" for="filter-rating">Rating</label>
+        <select id="filter-rating" name="rating">
+          <option value="">Any rating</option>
+          {% for value, label in rating_choices %}
+            <option value="{{ value }}" {% if filters.rating == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+
+        {% if tags %}
+          <label class="visually-hidden" for="filter-tag">Tag</label>
+          <select id="filter-tag" name="tag">
+            <option value="">Any tag</option>
+            {% for tag in tags %}
+              <option value="{{ tag.name }}" {% if filters.tag == tag.name %}selected{% endif %}>#{{ tag.name }}</option>
+            {% endfor %}
+          </select>
+        {% endif %}
+
+        <button class="btn btn--primary btn--sm" type="submit">Filter</button>
+
+        {% if has_filters %}
+          <a class="btn btn--ghost btn--sm" href="{% url 'songs:song_list' %}">Clear</a>
+        {% endif %}
+      </div>
+    </form>
 
     {% if songs %}
       <div class="song-grid">
@@ -41,6 +107,12 @@
             </div>
           </a>
         {% endfor %}
+      </div>
+    {% elif has_filters %}
+      <div class="empty-state">
+        <h2>No songs match those filters</h2>
+        <p>Try a wider search, or clear the filters to see everything.</p>
+        <a class="btn btn--ghost btn--sm" href="{% url 'songs:song_list' %}">Clear filters</a>
       </div>
     {% else %}
       <div class="empty-state">

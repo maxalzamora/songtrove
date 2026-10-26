@@ -792,6 +792,43 @@ a.song-card:hover {
   font-weight: 500;
 }
 
+/* ---------- Library filters ---------- */
+
+.filters {
+  padding: 0.85rem;
+  margin-bottom: 1.5rem;
+}
+
+.filters__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filters__row input,
+.filters__row select {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  color: inherit;
+  font: inherit;
+  font-size: 0.87rem;
+}
+
+.filters__row input:focus,
+.filters__row select:focus {
+  border-color: var(--color-accent);
+  outline: 2px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
+  outline-offset: 0;
+}
+
+.filters__search {
+  flex: 1 1 13rem;
+  min-width: 0;
+}
+
 /* ---------- Footer ---------- */
 .site-footer {
   border-top: 1px solid var(--color-border);
