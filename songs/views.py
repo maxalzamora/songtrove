@@ -90,15 +90,13 @@ def song_list(request):
     return render(request, "songs/song_list.html", context)
 
 
-@login_required
-def song_detail(request, pk):
-    song = get_object_or_404(request.user.songs.prefetch_related("tags"), pk=pk)
-    transpose = _parse_transpose(request.GET.get("transpose"))
-
+def _sheet_context(song, raw_transpose: str | None) -> dict:
+    """View context shared by the detail page and the print view."""
+    transpose = _parse_transpose(raw_transpose)
     written_key = transpose_key(song.song_key, transpose) if song.song_key else ""
     plan = plan_for(written_key, song.capo) if written_key else None
 
-    context = {
+    return {
         "song": song,
         "transpose": transpose,
         "written_key": written_key,
@@ -107,7 +105,19 @@ def song_detail(request, pk):
         "next_transpose": _parse_transpose(str(transpose + 1)),
         "can_transpose": song.is_chordpro and bool(song.song_key),
     }
-    return render(request, "songs/song_detail.html", context)
+
+
+@login_required
+def song_detail(request, pk):
+    song = get_object_or_404(request.user.songs.prefetch_related("tags"), pk=pk)
+    return render(request, "songs/song_detail.html", _sheet_context(song, request.GET.get("transpose")))
+
+
+@login_required
+def song_print(request, pk):
+    """A sheet on its own page, ready for the music stand or the printer."""
+    song = get_object_or_404(request.user.songs.prefetch_related("tags"), pk=pk)
+    return render(request, "songs/song_print.html", _sheet_context(song, request.GET.get("transpose")))
 
 
 def _convert_sheet(request, song=None):

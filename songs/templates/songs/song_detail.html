@@ -24,6 +24,9 @@
       </div>
 
       <div class="page-actions">
+        <a class="btn btn--ghost btn--sm"
+           href="{% url 'songs:song_print' song.pk %}{% if transpose %}?transpose={{ transpose }}{% endif %}"
+           target="_blank" rel="noopener">Print</a>
         <a class="btn btn--ghost btn--sm" href="{% url 'songs:song_update' song.pk %}">Edit</a>
         <a class="btn btn--danger btn--sm" href="{% url 'songs:song_delete' song.pk %}">Delete</a>
       </div>

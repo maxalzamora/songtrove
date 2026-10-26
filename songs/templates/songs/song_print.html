@@ -1,0 +1,57 @@
+{% load sheet %}{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ song.title }} — SongTrove</title>
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/sheet.css' %}">
+    <link rel="stylesheet" href="{% static 'css/print.css' %}">
+  </head>
+  <body class="print-page">
+    <div class="print-bar">
+      <a class="print-bar__back" href="{{ song.get_absolute_url }}{% if transpose %}?transpose={{ transpose }}{% endif %}">
+        ← Back to the song
+      </a>
+      <button class="btn btn--primary btn--sm" type="button" onclick="window.print()">Print</button>
+    </div>
+
+    <article class="print-sheet">
+      <header class="print-sheet__head">
+        <h1>{{ song.title }}</h1>
+        {% if song.artist %}
+          <p class="print-sheet__artist">{{ song.artist }}</p>
+        {% endif %}
+
+        <p class="print-sheet__meta">
+          {% if written_key %}Key {{ written_key }}{% endif %}
+          {% if song.capo %} · Capo {{ song.capo }}{% endif %}
+          {% if plan and song.capo %} · Sounds in {{ plan.sounding_key }}{% endif %}
+          {% if song.tempo %} · {{ song.tempo }} bpm{% endif %}
+          {% if song.time_signature %} · {{ song.time_signature }}{% endif %}
+          {% if song.tuning and song.tuning != "Standard" %} · {{ song.tuning }}{% endif %}
+        </p>
+      </header>
+
+      {% if song.sheet_body %}
+        {% chord_sheet song transpose=transpose %}
+      {% else %}
+        <p class="print-sheet__empty">No sheet yet.</p>
+      {% endif %}
+
+      {% if song.notes %}
+        <section class="print-sheet__notes">
+          <h2>Notes</h2>
+          {{ song.notes|linebreaks }}
+        </section>
+      {% endif %}
+
+      {% if song.tags.all %}
+        <p class="print-sheet__tags">
+          {% for tag in song.tags.all %}#{{ tag.name }}{% if not forloop.last %} · {% endif %}{% endfor %}
+        </p>
+      {% endif %}
+    </article>
+  </body>
+</html>

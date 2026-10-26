@@ -54,3 +54,8 @@
 .chord-cell--bare {
   min-width: 3.5ch;
 }
+
+/* Text with no chord above it is free to wrap, unlike a chorded span. */
+.chord-cell--plain {
+  white-space: pre-wrap;
+}

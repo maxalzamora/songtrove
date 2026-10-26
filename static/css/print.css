@@ -1,0 +1,159 @@
+/* A sheet on its own, then the same sheet on paper. */
+
+.print-page {
+  background: var(--color-bg);
+}
+
+.print-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1rem 1.25rem;
+}
+
+.print-bar__back {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.print-bar__back:hover {
+  color: var(--color-accent);
+}
+
+.print-sheet {
+  max-width: 46rem;
+  margin: 0 auto 3rem;
+  padding: 2rem 2.25rem 2.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.print-sheet__head {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.print-sheet h1 {
+  margin: 0 0 0.15rem;
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  letter-spacing: -0.02em;
+}
+
+.print-sheet__artist {
+  margin: 0 0 0.65rem;
+  color: var(--color-muted);
+}
+
+.print-sheet__meta {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.84rem;
+}
+
+.print-sheet__empty {
+  color: var(--color-muted);
+}
+
+.print-sheet__notes {
+  margin-top: 1.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.9rem;
+}
+
+.print-sheet__notes h2 {
+  margin-bottom: 0.5rem;
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.print-sheet__tags {
+  margin: 1.5rem 0 0;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+}
+
+/* ---------- Paper ---------- */
+
+@media print {
+  @page {
+    margin: 16mm;
+  }
+
+  /* Force the light palette even if the reader prefers dark mode. */
+  html {
+    color-scheme: light !important;
+  }
+
+  .print-bar {
+    display: none;
+  }
+
+  .print-page {
+    background: #fff;
+  }
+
+  .print-sheet {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: #fff;
+    box-shadow: none;
+  }
+
+  .print-sheet h1 {
+    font-size: 1.55rem;
+  }
+
+  .print-sheet__head,
+  .print-sheet__notes {
+    border-color: #b5b0a6;
+  }
+
+  .print-sheet__meta,
+  .print-sheet__artist,
+  .print-sheet__tags {
+    color: #444;
+  }
+
+  .chord-sheet {
+    font-size: 10pt;
+    overflow: visible;
+  }
+
+  .chord-sheet__line {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .chord-sheet__comment {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .chord-cell__chord {
+    color: #000;
+  }
+
+  .chord-sheet__comment,
+  .print-sheet__notes h2 {
+    color: #333;
+  }
+
+  .print-sheet__tags {
+    display: none;
+  }
+}
