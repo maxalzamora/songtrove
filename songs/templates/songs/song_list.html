@@ -35,6 +35,10 @@
                 <span class="chip chip--muted">#{{ tag.name }}</span>
               {% endfor %}
             </div>
+
+            <div class="song-card__rating">
+              {% include "songs/_stars.html" %}
+            </div>
           </a>
         {% endfor %}
       </div>

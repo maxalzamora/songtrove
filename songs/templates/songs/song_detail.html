@@ -43,6 +43,38 @@
 
       <aside class="detail-sidebar">
         <div class="card meta-card">
+          <h2>Your rating</h2>
+          <form class="rating-form" method="post" action="{% url 'songs:song_rate' song.pk %}">
+            {% csrf_token %}
+            <fieldset class="rating">
+              <legend class="visually-hidden">Rate this song from one to five stars</legend>
+              <div class="rating__stars">
+                {% for value in "54321" %}
+                  <input
+                    type="radio"
+                    name="rating"
+                    id="rating-{{ value }}"
+                    value="{{ value }}"
+                    {% if song.rating|stringformat:"s" == value %}checked{% endif %}
+                    onchange="this.form.requestSubmit()"
+                  >
+                  <label for="rating-{{ value }}">
+                    <span class="visually-hidden">{{ value }} star{{ value|pluralize }}</span>
+                    <span aria-hidden="true">★</span>
+                  </label>
+                {% endfor %}
+              </div>
+            </fieldset>
+            <div class="rating__actions">
+              <button class="btn btn--ghost btn--sm" type="submit">Save</button>
+              {% if song.rating %}
+                <button class="btn btn--ghost btn--sm" type="submit" name="rating" value="">Clear</button>
+              {% endif %}
+            </div>
+          </form>
+        </div>
+
+        <div class="card meta-card">
           <h2>Details</h2>
           <dl class="meta-list">
             {% if song.song_key %}

@@ -1,0 +1,7 @@
+{% if song.rating %}
+  <span class="stars" title="Rated {{ song.rating }} out of 5" aria-label="Rated {{ song.rating }} out of 5">
+    {{ song.rating_stars }}
+  </span>
+{% else %}
+  <span class="stars stars--empty" aria-label="Not rated">☆☆☆☆☆</span>
+{% endif %}

@@ -127,3 +127,10 @@ class Song(models.Model):
     @property
     def is_chordpro(self) -> bool:
         return self.sheet_format == self.SheetFormat.CHORDPRO
+
+    @property
+    def rating_stars(self) -> str:
+        """Filled and empty stars for display, or empty when unrated."""
+        if not self.rating:
+            return ""
+        return "★" * self.rating + "☆" * (5 - self.rating)
