@@ -12,6 +12,20 @@
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
     <link rel="stylesheet" href="{% static 'css/layout.css' %}">
     <link rel="stylesheet" href="{% static 'css/sheet.css' %}">
+    <script>
+      // Apply the saved theme before first paint so the page never flashes.
+      (function () {
+        try {
+          var theme = localStorage.getItem("songtrove-theme");
+          if (theme === "light" || theme === "dark") {
+            document.documentElement.setAttribute("data-theme", theme);
+          }
+        } catch (error) {
+          /* Storage unavailable; fall back to the system preference. */
+        }
+      })();
+    </script>
+    <script src="{% static 'js/theme.js' %}" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -40,6 +54,9 @@
             <a href="{% url 'login' %}">Log in</a>
             <a class="btn btn--primary btn--sm" href="{% url 'signup' %}">Sign up</a>
           {% endif %}
+          <button class="theme-toggle" type="button" data-theme-toggle aria-label="Theme: follow system">
+            ◐
+          </button>
         </nav>
       </div>
     </header>

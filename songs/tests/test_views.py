@@ -66,3 +66,12 @@ def test_minor_key_is_labelled(client, django_user_model):
     content = client.get(reverse("songs:song_list")).content.decode()
 
     assert ">Em<" in content
+
+
+def test_layout_ships_a_theme_toggle(client):
+    content = client.get(reverse("home")).content.decode()
+
+    assert "data-theme-toggle" in content
+    assert "js/theme.js" in content
+    # The pre-paint script must know the storage key the toggle writes.
+    assert "songtrove-theme" in content

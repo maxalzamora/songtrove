@@ -81,6 +81,31 @@
   margin: 0;
 }
 
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.theme-toggle:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
 /* ---------- Buttons ---------- */
 
 .btn {
@@ -873,4 +898,60 @@ a.song-card:hover {
 
 .site-footer a:hover {
   color: var(--color-accent);
+}
+
+/* ---------- Small screens ---------- */
+
+@media (max-width: 40rem) {
+  .container {
+    padding-inline: 1rem;
+  }
+
+  .site-header__inner {
+    min-height: 3.5rem;
+  }
+
+  .site-nav {
+    gap: 0.7rem;
+    font-size: 0.85rem;
+  }
+
+  .site-nav__user {
+    display: none;
+  }
+
+  .hero {
+    padding: 2.5rem 0 2rem;
+  }
+
+  .page-head {
+    padding-top: 2rem;
+  }
+
+  .detail-head {
+    padding-top: 1.75rem;
+  }
+
+  .form-card,
+  .form-card--wide {
+    padding: 1.4rem;
+    margin-top: 1.5rem;
+  }
+
+  .filters {
+    padding: 0.7rem;
+  }
+
+  .filters__row > select {
+    flex: 1 1 7rem;
+  }
+
+  .sheet-toolbar {
+    gap: 0.6rem;
+  }
+
+  .transpose {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
