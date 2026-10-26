@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Delete {{ song.title }} — SongTrove{% endblock %}
+
+{% block content %}
+  <div class="container">
+    <div class="card form-card">
+      <h1>Delete this song?</h1>
+      <p class="form-card__intro">
+        “{{ song.title }}” will be removed from your library. This cannot be undone.
+      </p>
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="form-actions">
+          <button class="btn btn--danger" type="submit">Delete song</button>
+          <a class="btn btn--ghost" href="{{ song.get_absolute_url }}">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

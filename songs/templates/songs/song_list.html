@@ -11,12 +11,13 @@
           {{ songs|length }} song{{ songs|length|pluralize }}
         </p>
       </div>
+      <a class="btn btn--primary btn--sm" href="{% url 'songs:song_create' %}">New song</a>
     </header>
 
     {% if songs %}
       <div class="song-grid">
         {% for song in songs %}
-          <article class="card song-card">
+          <a class="card song-card" href="{{ song.get_absolute_url }}">
             <div class="song-card__title">{{ song.title }}</div>
             {% if song.artist %}
               <div class="song-card__artist">{{ song.artist }}</div>
@@ -34,13 +35,14 @@
                 <span class="chip chip--muted">#{{ tag.name }}</span>
               {% endfor %}
             </div>
-          </article>
+          </a>
         {% endfor %}
       </div>
     {% else %}
       <div class="empty-state">
         <h2>No songs yet</h2>
         <p>Your library is empty. The first sheet is the hardest.</p>
+        <a class="btn btn--primary btn--sm" href="{% url 'songs:song_create' %}">Add your first song</a>
       </div>
     {% endif %}
   </div>

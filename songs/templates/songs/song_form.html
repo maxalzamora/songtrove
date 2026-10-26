@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}{% if song %}Edit {{ song.title }}{% else %}New song{% endif %} — SongTrove{% endblock %}
+
+{% block content %}
+  <div class="container">
+    <header class="page-head">
+      <div>
+        <h1>{% if song %}Edit song{% else %}New song{% endif %}</h1>
+        <p class="page-head__meta">
+          {% if song %}
+            {{ song.title }}
+          {% else %}
+            Paste a ChordPro sheet, or type the chords in brackets above the lyrics.
+          {% endif %}
+        </p>
+      </div>
+      <a class="btn btn--ghost btn--sm"
+         href="{% if song %}{{ song.get_absolute_url }}{% else %}{% url 'songs:song_list' %}{% endif %}">
+        Cancel
+      </a>
+    </header>
+
+    <form method="post" novalidate class="card form-card form-card--wide">
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+        <div class="alert alert--error">{{ form.non_field_errors.0 }}</div>
+      {% endif %}
+
+      <fieldset class="form-section">
+        <legend>The song</legend>
+        <div class="form-grid form-grid--two">
+          {% include "songs/_field.html" with field=form.title %}
+          {% include "songs/_field.html" with field=form.artist %}
+        </div>
+        {% include "songs/_field.html" with field=form.status %}
+      </fieldset>
+
+      <fieldset class="form-section">
+        <legend>Key and capo</legend>
+        <div class="form-grid form-grid--three">
+          {% include "songs/_field.html" with field=form.song_key %}
+          {% include "songs/_field.html" with field=form.mode %}
+          {% include "songs/_field.html" with field=form.capo %}
+        </div>
+        <div class="form-grid form-grid--three">
+          {% include "songs/_field.html" with field=form.tempo %}
+          {% include "songs/_field.html" with field=form.time_signature %}
+          {% include "songs/_field.html" with field=form.tuning %}
+        </div>
+      </fieldset>
+
+      <fieldset class="form-section">
+        <legend>The sheet</legend>
+        {% include "songs/_field.html" with field=form.sheet_format %}
+        {% include "songs/_field.html" with field=form.sheet_body %}
+      </fieldset>
+
+      <fieldset class="form-section">
+        <legend>Notes and links</legend>
+        {% include "songs/_field.html" with field=form.tags_input %}
+        {% include "songs/_field.html" with field=form.source_url %}
+        {% include "songs/_field.html" with field=form.notes %}
+      </fieldset>
+
+      <div class="form-actions">
+        <button class="btn btn--primary" type="submit">
+          {% if song %}Save changes{% else %}Add to library{% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+{% endblock %}

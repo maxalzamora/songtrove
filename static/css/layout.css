@@ -490,8 +490,168 @@ a.song-card:hover {
   margin: 0.4rem 0 1.25rem;
 }
 
-/* ---------- Footer ---------- */
+/* ---------- Song detail ---------- */
 
+.detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 2.5rem 0 1.75rem;
+}
+
+.detail-head h1 {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  letter-spacing: -0.02em;
+  margin: 0.15rem 0 0.75rem;
+}
+
+.detail-head .eyebrow {
+  margin-bottom: 0;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.detail-grid {
+  display: grid;
+  gap: 1.5rem;
+  padding-bottom: 4rem;
+}
+
+@media (min-width: 60rem) {
+  .detail-grid {
+    grid-template-columns: minmax(0, 1fr) 19rem;
+    align-items: start;
+  }
+}
+
+.sheet-panel {
+  padding: 1.5rem 1.6rem;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.sheet-empty {
+  margin: 0;
+  padding: 2.5rem 0;
+  text-align: center;
+  color: var(--color-muted);
+}
+
+.detail-sidebar {
+  display: grid;
+  gap: 1rem;
+}
+
+.meta-card {
+  padding: 1.25rem 1.35rem;
+}
+
+.meta-card h2 {
+  margin-bottom: 0.75rem;
+  color: var(--color-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.meta-list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.4rem 1rem;
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.meta-list dt {
+  color: var(--color-muted);
+}
+
+.meta-list dd {
+  margin: 0;
+}
+
+.prose {
+  font-size: 0.9rem;
+}
+
+.prose p {
+  margin: 0 0 0.75rem;
+}
+
+.prose p:last-child {
+  margin-bottom: 0;
+}
+
+/* ---------- Song form ---------- */
+
+.form-card--wide {
+  max-width: 48rem;
+  margin-top: 0;
+  margin-bottom: 4rem;
+  padding: 2rem 2.25rem 2.25rem;
+}
+
+.form-section {
+  margin: 0 0 1.9rem;
+  padding: 0;
+  border: 0;
+}
+
+.form-section legend {
+  padding: 0;
+  margin-bottom: 0.85rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.form-grid {
+  display: grid;
+  gap: 0 1rem;
+}
+
+@media (min-width: 34rem) {
+  .form-grid--two {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .form-grid--three {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.field--invalid input,
+.field--invalid textarea,
+.field--invalid select {
+  border-color: var(--color-danger);
+}
+
+.field textarea.mono {
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  line-height: 1.55;
+  min-height: 18rem;
+  resize: vertical;
+  tab-size: 2;
+}
+
+/* ---------- Footer ---------- */
 .site-footer {
   border-top: 1px solid var(--color-border);
   padding: 1.75rem 0;

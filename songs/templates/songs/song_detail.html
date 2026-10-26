@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load sheet %}
+
+{% block title %}{{ song.title }} — SongTrove{% endblock %}
+
+{% block content %}
+  <div class="container">
+    <header class="detail-head">
+      <div>
+        <p class="eyebrow">{{ song.artist|default:"Unknown artist" }}</p>
+        <h1>{{ song.title }}</h1>
+        <div class="chip-row">
+          {% if song.display_key %}
+            <span class="chip">{{ song.display_key }}</span>
+          {% endif %}
+          {% if song.capo %}
+            <span class="chip chip--muted">Capo {{ song.capo }}</span>
+          {% endif %}
+          <span class="chip" data-status="{{ song.status }}">{{ song.get_status_display }}</span>
+          {% for tag in song.tags.all %}
+            <span class="chip chip--muted">#{{ tag.name }}</span>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="page-actions">
+        <a class="btn btn--ghost btn--sm" href="{% url 'songs:song_update' song.pk %}">Edit</a>
+        <a class="btn btn--danger btn--sm" href="{% url 'songs:song_delete' song.pk %}">Delete</a>
+      </div>
+    </header>
+
+    <div class="detail-grid">
+      <article class="card sheet-panel">
+        {% if song.sheet_body %}
+          {% chord_sheet song %}
+        {% else %}
+          <p class="sheet-empty">
+            No sheet yet.
+            <a href="{% url 'songs:song_update' song.pk %}">Add the chords</a>.
+          </p>
+        {% endif %}
+      </article>
+
+      <aside class="detail-sidebar">
+        <div class="card meta-card">
+          <h2>Details</h2>
+          <dl class="meta-list">
+            {% if song.song_key %}
+              <dt>Key</dt>
+              <dd>{{ song.display_key }}</dd>
+            {% endif %}
+            {% if song.capo %}
+              <dt>Capo</dt>
+              <dd>Fret {{ song.capo }}</dd>
+            {% endif %}
+            {% if song.tempo %}
+              <dt>Tempo</dt>
+              <dd>{{ song.tempo }} bpm</dd>
+            {% endif %}
+            {% if song.time_signature %}
+              <dt>Time</dt>
+              <dd>{{ song.time_signature }}</dd>
+            {% endif %}
+            {% if song.tuning %}
+              <dt>Tuning</dt>
+              <dd>{{ song.tuning }}</dd>
+            {% endif %}
+            <dt>Updated</dt>
+            <dd>{{ song.updated_at|date:"j M Y" }}</dd>
+            {% if song.source_url %}
+              <dt>Source</dt>
+              <dd>
+                <a href="{{ song.source_url }}" target="_blank" rel="noopener noreferrer nofollow">
+                  Original sheet
+                </a>
+              </dd>
+            {% endif %}
+          </dl>
+        </div>
+
+        {% if song.notes %}
+          <div class="card meta-card">
+            <h2>Notes</h2>
+            <div class="prose">{{ song.notes|linebreaks }}</div>
+          </div>
+        {% endif %}
+      </aside>
+    </div>
+  </div>
+{% endblock %}
