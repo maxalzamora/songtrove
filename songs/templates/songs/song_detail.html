@@ -31,8 +31,45 @@
 
     <div class="detail-grid">
       <article class="card sheet-panel">
+        {% if written_key %}
+          <div class="sheet-toolbar">
+            <div class="capo-bar">
+              <span class="capo-bar__item">
+                <span class="capo-bar__label">Shapes</span>
+                <span class="capo-bar__value">{{ written_key }}</span>
+              </span>
+              <span class="capo-bar__sep" aria-hidden="true">·</span>
+              <span class="capo-bar__item">
+                <span class="capo-bar__label">Capo</span>
+                <span class="capo-bar__value">{% if song.capo %}{{ song.capo }}{% else %}none{% endif %}</span>
+              </span>
+              <span class="capo-bar__sep" aria-hidden="true">→</span>
+              <span class="capo-bar__item">
+                <span class="capo-bar__label">Sounds in</span>
+                <span class="capo-bar__value">{{ plan.sounding_key }}</span>
+              </span>
+            </div>
+
+            {% if can_transpose %}
+              <div class="transpose">
+                <a class="btn btn--ghost btn--sm" href="?transpose={{ prev_transpose }}"
+                   aria-label="Transpose down a semitone">−</a>
+                <span class="transpose__value" aria-live="polite">
+                  {{ written_key }}{% if transpose %} <small>{{ transpose|stringformat:"+d" }}</small>{% endif %}
+                </span>
+                <a class="btn btn--ghost btn--sm" href="?transpose={{ next_transpose }}"
+                   aria-label="Transpose up a semitone">+</a>
+                {% if transpose %}
+                  <a class="btn btn--ghost btn--sm" href="{% url 'songs:song_detail' song.pk %}">Reset</a>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+          <p class="visually-hidden">{{ plan.describe }}</p>
+        {% endif %}
+
         {% if song.sheet_body %}
-          {% chord_sheet song %}
+          {% chord_sheet song transpose=transpose %}
         {% else %}
           <p class="sheet-empty">
             No sheet yet.
@@ -78,12 +115,16 @@
           <h2>Details</h2>
           <dl class="meta-list">
             {% if song.song_key %}
-              <dt>Key</dt>
+              <dt>Written</dt>
               <dd>{{ song.display_key }}</dd>
             {% endif %}
             {% if song.capo %}
               <dt>Capo</dt>
               <dd>Fret {{ song.capo }}</dd>
+            {% endif %}
+            {% if plan %}
+              <dt>Sounds in</dt>
+              <dd>{{ plan.sounding_key }}</dd>
             {% endif %}
             {% if song.tempo %}
               <dt>Tempo</dt>

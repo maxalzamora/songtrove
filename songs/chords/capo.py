@@ -1,10 +1,12 @@
 """Capo arithmetic.
 
-A capo on fret *n* raises everything you play by *n* semitones. So if a song
-sounds in G and the capo is on fret 2, you finger F shapes and hear G::
+A sheet written for a capo holds *shape* chords: what you finger. A capo on
+fret *n* raises them by *n* semitones, so the key the audience hears is::
 
-    shape_key = sounding_key - capo
-    sounding_key = shape_key + capo
+    sounding_key = written_key + capo
+    written_key  = sounding_key - capo
+
+A song in G played with a capo on 2 is written in F shapes and sounds in G.
 """
 
 from __future__ import annotations
@@ -22,8 +24,8 @@ COMMON_SHAPE_KEYS = ("C", "G", "D", "A", "E", "F", "Bb", "Eb", "Ab", "B")
 
 @dataclass(frozen=True, slots=True)
 class CapoPlan:
+    written_key: str
     sounding_key: str
-    shape_key: str
     capo: int
 
     @property
@@ -31,15 +33,24 @@ class CapoPlan:
         return self.capo > 0
 
     def describe(self) -> str:
-        if not self.sounding_key:
+        if not self.written_key:
             return ""
         if not self.uses_capo:
-            return f"Original {self.sounding_key} · no capo"
-        return f"Original {self.sounding_key} · capo {self.capo} → play {self.shape_key} shapes"
+            return f"Play in {self.written_key}, no capo"
+        return f"Capo {self.capo}, play {self.written_key} shapes, sounds in {self.sounding_key}"
 
 
-def shape_key_for(sounding_key: str, capo: int, prefer_flats: bool | None = None) -> str:
-    """The key you finger when a song in ``sounding_key`` is capoed at ``capo``."""
+def sounding_key_for(written_key: str, capo: int, prefer_flats: bool | None = None) -> str:
+    """The key that comes out when you play ``written_key`` shapes with a capo."""
+    if not written_key:
+        return ""
+    if prefer_flats is None:
+        prefer_flats = prefers_flats(written_key)
+    return transpose_key(written_key, capo, prefer_flats)
+
+
+def written_key_for(sounding_key: str, capo: int, prefer_flats: bool | None = None) -> str:
+    """The shape key to finger if a song should sound in ``sounding_key``."""
     if not sounding_key:
         return ""
     if prefer_flats is None:
@@ -47,20 +58,11 @@ def shape_key_for(sounding_key: str, capo: int, prefer_flats: bool | None = None
     return transpose_key(sounding_key, -capo, prefer_flats)
 
 
-def sounding_key_for(shape_key: str, capo: int, prefer_flats: bool | None = None) -> str:
-    """The key that comes out when you play ``shape_key`` shapes with a capo."""
-    if not shape_key:
-        return ""
-    if prefer_flats is None:
-        prefer_flats = prefers_flats(shape_key)
-    return transpose_key(shape_key, capo, prefer_flats)
-
-
-def plan_for(sounding_key: str, capo: int, prefer_flats: bool | None = None) -> CapoPlan:
+def plan_for(written_key: str, capo: int, prefer_flats: bool | None = None) -> CapoPlan:
     """Everything the sheet header needs to explain the capo."""
     return CapoPlan(
-        sounding_key=sounding_key,
-        shape_key=shape_key_for(sounding_key, capo, prefer_flats),
+        written_key=written_key,
+        sounding_key=sounding_key_for(written_key, capo, prefer_flats),
         capo=capo,
     )
 
@@ -77,7 +79,9 @@ def suggest_capos(
     limit = max(0, min(max_capo, MAX_CAPO))
     suggestions: list[CapoPlan] = []
     for capo in range(1, limit + 1):
-        shape = shape_key_for(sounding_key, capo, prefer_flats)
-        if shape in COMMON_SHAPE_KEYS:
-            suggestions.append(CapoPlan(sounding_key=sounding_key, shape_key=shape, capo=capo))
+        written = written_key_for(sounding_key, capo, prefer_flats)
+        if written in COMMON_SHAPE_KEYS:
+            suggestions.append(
+                CapoPlan(written_key=written, sounding_key=sounding_key, capo=capo)
+            )
     return suggestions

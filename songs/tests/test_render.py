@@ -124,6 +124,14 @@ def test_tag_renders_bare_chord_class():
 
 
 def test_tag_flat_key_spelling():
+    # C up three semitones is Eb, so the chords should read flat too.
+    html = render_tag(song(song_key="C", sheet_body="[C]x"), transpose=3)
+
+    assert ">Eb<" in html
+
+
+def test_tag_spelling_follows_the_transposed_key():
+    # Bb major up a semitone is B major, which is sharp-flavoured.
     html = render_tag(song(song_key="Bb", sheet_body="[C]x"), transpose=1)
 
-    assert ">Db<" in html
+    assert ">C#<" in html

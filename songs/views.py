@@ -4,8 +4,18 @@ from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from .chords import plan_for, transpose_key
 from .forms import SongForm
 from .models import Song
+
+
+def _parse_transpose(raw: str | None) -> int:
+    """Normalise a transpose value into -6..5 semitones."""
+    try:
+        value = int(raw or 0)
+    except (TypeError, ValueError):
+        return 0
+    return ((value + 6) % 12) - 6
 
 
 @login_required
@@ -18,7 +28,21 @@ def song_list(request):
 @login_required
 def song_detail(request, pk):
     song = get_object_or_404(request.user.songs.prefetch_related("tags"), pk=pk)
-    return render(request, "songs/song_detail.html", {"song": song})
+    transpose = _parse_transpose(request.GET.get("transpose"))
+
+    written_key = transpose_key(song.song_key, transpose) if song.song_key else ""
+    plan = plan_for(written_key, song.capo) if written_key else None
+
+    context = {
+        "song": song,
+        "transpose": transpose,
+        "written_key": written_key,
+        "plan": plan,
+        "prev_transpose": _parse_transpose(str(transpose - 1)),
+        "next_transpose": _parse_transpose(str(transpose + 1)),
+        "can_transpose": song.is_chordpro and bool(song.song_key),
+    }
+    return render(request, "songs/song_detail.html", context)
 
 
 @login_required

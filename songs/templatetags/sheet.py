@@ -4,6 +4,7 @@ from django import template
 
 from songs.chords.render import render_sheet
 from songs.chords.theory import prefers_flats
+from songs.chords.transpose import transpose_key
 
 from ..models import Song
 
@@ -13,7 +14,10 @@ register = template.Library()
 @register.inclusion_tag("songs/_sheet.html")
 def chord_sheet(song: Song, transpose: int = 0) -> dict:
     """Render a song's sheet, transposed by ``transpose`` semitones."""
-    prefer_flats = prefers_flats(song.song_key) if song.song_key else None
+    # Spelling follows the key after transposition, so a sheet moved down into
+    # Bb starts using flats rather than sharps.
+    key = transpose_key(song.song_key, transpose) if song.song_key else ""
+    prefer_flats = prefers_flats(key) if key else None
 
     return {
         "song": song,
