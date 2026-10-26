@@ -5,27 +5,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.urls import reverse
 
-# Keys a sheet can be written in. Both spellings of each accidental are kept so
-# a sheet typed in Eb stays in flats when it is transposed.
-SONG_KEYS = (
-    ("C", "C"),
-    ("C#", "C#"),
-    ("Db", "Db"),
-    ("D", "D"),
-    ("D#", "D#"),
-    ("Eb", "Eb"),
-    ("E", "E"),
-    ("F", "F"),
-    ("F#", "F#"),
-    ("Gb", "Gb"),
-    ("G", "G"),
-    ("G#", "G#"),
-    ("Ab", "Ab"),
-    ("A", "A"),
-    ("A#", "A#"),
-    ("Bb", "Bb"),
-    ("B", "B"),
-)
+from .chords.theory import KEY_CHOICES
 
 
 class Tag(models.Model):
@@ -81,7 +61,7 @@ class Song(models.Model):
     title = models.CharField(max_length=200)
     artist = models.CharField(max_length=200, blank=True)
 
-    song_key = models.CharField(max_length=2, choices=SONG_KEYS, blank=True)
+    song_key = models.CharField(max_length=2, choices=KEY_CHOICES, blank=True)
     mode = models.CharField(max_length=5, choices=Mode.choices, default=Mode.MAJOR)
     capo = models.PositiveSmallIntegerField(
         default=0,
