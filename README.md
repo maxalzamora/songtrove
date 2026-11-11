@@ -147,7 +147,8 @@ The tests cover HTML escaping, the "no characters move" rendering guarantee,
 chord auto-detection, capo transposition, the plain-text editor's
 line-preserving merge, authentication and CSRF, the compact song list, manual
 song entry and its validation, the full song editor, JSON export and import, and
-the in-place database upgrade. GitHub Actions runs the same suite on every push.
+the in-place database upgrade. The suite uses only the standard library, so it
+needs no extra test dependency.
 
 ## Good to know
 

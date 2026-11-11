@@ -25,7 +25,7 @@ git push -u origin main
 ```
 
 Check that `git status` does not list `.env`, `data/`, or `.venv/` before
-committing. GitHub Actions runs the test suite on every push.
+committing. Run `python3 -m unittest discover -s tests` before pushing.
 
 ## 2. Set a password
 
