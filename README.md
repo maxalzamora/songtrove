@@ -37,8 +37,12 @@ on the **Add song** page and stored locally.
 - Search by title, artist, notes or tags, then narrow the list by tag, rating or
   tuning. Sort by recently added, title, artist or rating.
 - Stored locally in SQLite and available offline.
-- Password-protected access with CSRF protection, so the library can be
-  deployed publicly without exposing it.
+- A public landing page introduces Songtrove without exposing any songs, while
+  password-protected access and CSRF protection keep the library private.
+- An optional read-only guest library with a few public-domain songs. Guests can
+  browse, search, open chord sheets and use Fit to screen, but cannot add,
+  edit, delete, import or change account settings. Set `SONGTROVE_GUEST=0` to
+  disable the guest button.
 - Multiple accounts with private libraries. The first admin is created from the
   environment on a fresh database; that admin can add members or other admins,
   reset passwords, disable accounts and change roles. Usernames are unique
@@ -119,6 +123,7 @@ setup in [DEPLOYMENT.md](DEPLOYMENT.md).
 | `SONGTROVE_USERNAME`       | `songtrove`               | First admin username on an empty database     |
 | `SONGTROVE_PASSWORD_HASH`  | required on first start   | First admin password hash                     |
 | `SONGTROVE_SECURE_COOKIES` | `0`                      | Set to `1` when serving over HTTPS           |
+| `SONGTROVE_GUEST`         | `1`                      | Set to `0` to disable the guest library      |
 | `FLASK_DEBUG`             | `0`                      | Set to `1` for debug/reload                  |
 
 ## Data and backup

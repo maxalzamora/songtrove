@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS users (
     role                TEXT    NOT NULL DEFAULT 'member'
                                 CHECK (role IN ('admin', 'member')),
     is_active           INTEGER NOT NULL DEFAULT 1,
+    is_guest            INTEGER NOT NULL DEFAULT 0,
     session_version     INTEGER NOT NULL DEFAULT 0,
     created_at          TEXT    NOT NULL,
     last_login_at       TEXT    NOT NULL DEFAULT '',
@@ -117,6 +118,7 @@ def init_app(app) -> None:
         database = get_db()
         _migrate_schema(database)
         database.executescript(SCHEMA)
+        _migrate_users_schema(database)
         database.execute(
             "UPDATE songs SET tuning = ? WHERE TRIM(COALESCE(tuning, '')) = ''",
             (DEFAULT_TUNING,),
@@ -384,6 +386,7 @@ def create_user(
     password_hash: str,
     role: str = ROLE_MEMBER,
     is_active: bool = True,
+    is_guest: bool = False,
 ) -> int:
     if role not in ROLES:
         raise ValueError("Unknown role.")
@@ -392,14 +395,15 @@ def create_user(
     try:
         cursor = database.execute(
             """INSERT INTO users
-                   (username, password_hash, role, is_active, created_at,
-                    last_login_at, password_changed_at)
-               VALUES (?, ?, ?, ?, ?, '', ?)""",
+                   (username, password_hash, role, is_active, is_guest,
+                    created_at, last_login_at, password_changed_at)
+               VALUES (?, ?, ?, ?, ?, ?, '', ?)""",
             (
                 username,
                 password_hash,
                 role,
                 1 if is_active else 0,
+                1 if is_guest else 0,
                 now,
                 now,
             ),
@@ -484,6 +488,18 @@ def _assign_orphan_songs(database: sqlite3.Connection) -> None:
             WHERE owner_id = 0 OR owner_id IS NULL""",
         (admin["id"],),
     )
+
+
+def _migrate_users_schema(database: sqlite3.Connection) -> None:
+    """Add the guest marker to user tables created before guest mode."""
+    columns = {
+        row["name"]
+        for row in database.execute("PRAGMA table_info(users)").fetchall()
+    }
+    if columns and "is_guest" not in columns:
+        database.execute(
+            "ALTER TABLE users ADD COLUMN is_guest INTEGER NOT NULL DEFAULT 0"
+        )
 
 
 def _migrate_schema(database: sqlite3.Connection) -> None:

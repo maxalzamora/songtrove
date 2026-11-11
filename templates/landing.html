@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Songtrove — a private chord library{% endblock %}
+
+{% block content %}
+<section class="landing-hero">
+  <div class="landing-copy">
+    <p class="eyebrow">Private chord &amp; lyric library</p>
+    <h1>A quiet home for the songs you play.</h1>
+    <p class="landing-lede">
+      Keep chords, lyrics, capo notes and the arrangements you actually use in
+      one place. Songtrove is private, searchable and ready when you pick up
+      the guitar.
+    </p>
+    <div class="landing-actions">
+      <a class="btn btn-primary" href="{{ url_for('login') }}">Log in to your library</a>
+      {% if guest_mode %}
+        <form class="guest-entry" method="post" action="{{ url_for('guest_login') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-ghost" type="submit">Browse the guest library</button>
+        </form>
+      {% endif %}
+      <a class="landing-link" href="#features">Explore the details <span aria-hidden="true">↓</span></a>
+    </div>
+    <p class="landing-note">The guest library is read-only and open to everyone. Full accounts are created by the library owner.</p>
+  </div>
+
+  <div class="landing-visual" aria-hidden="true">
+    <div class="preview-glow"></div>
+    <article class="preview-card">
+      <header class="preview-top">
+        <span class="preview-label">Now playing</span>
+        <span class="preview-pill">Capo 3</span>
+      </header>
+      <h2>Late Set</h2>
+      <p class="preview-artist">The Night Owls</p>
+      <div class="preview-meta">
+        <span>Standard tuning</span>
+        <span class="preview-stars">★★★★★</span>
+      </div>
+      <div class="preview-sheet">
+        <p class="preview-section">[Verse]</p>
+        <p class="preview-chords"><span>G</span><span>D</span></p>
+        <p class="preview-lyric">The room goes quiet, the strings ring true</p>
+        <p class="preview-chords"><span>Em</span><span>C</span></p>
+        <p class="preview-lyric">Play the songs that carry you</p>
+      </div>
+      <footer class="preview-footer">
+        <span>#acoustic</span>
+        <span>#favorites</span>
+        <span class="preview-arrow">→</span>
+      </footer>
+    </article>
+    <div class="preview-float">Ready for the stand</div>
+  </div>
+</section>
+
+<section class="landing-features" id="features" aria-labelledby="features-title">
+  <div class="section-head">
+    <p class="eyebrow">What’s inside</p>
+    <h2 id="features-title">Built around the way you actually play.</h2>
+  </div>
+
+  <div class="feature-grid">
+    <article class="feature-card">
+      <span class="feature-index">01</span>
+      <h3>Your arrangements, intact</h3>
+      <p>Save the chords, lyrics, capo, tuning and notes exactly as you play them.</p>
+    </article>
+    <article class="feature-card">
+      <span class="feature-index">02</span>
+      <h3>Find it before the downbeat</h3>
+      <p>Search titles, artists, notes and tags. Filter by tag, rating or tuning.</p>
+    </article>
+    <article class="feature-card">
+      <span class="feature-index">03</span>
+      <h3>Made for the music stand</h3>
+      <p>Fixed-width chord sheets and a fit-to-screen mode keep every line readable.</p>
+    </article>
+    <article class="feature-card">
+      <span class="feature-index">04</span>
+      <h3>Private by design</h3>
+      <p>Every account has its own library. No public profiles, feeds or browsing.</p>
+    </article>
+  </div>
+</section>
+
+<section class="landing-cta" aria-labelledby="landing-cta-title">
+  <div>
+    <p class="eyebrow">Your library is waiting</p>
+    <h2 id="landing-cta-title">Pick up where you left off.</h2>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('login') }}">Log in</a>
+</section>
+{% endblock %}

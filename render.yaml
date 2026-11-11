@@ -19,6 +19,8 @@ services:
         value: /var/data/songtrove.db
       - key: SONGTROVE_SECURE_COOKIES
         value: "1"
+      - key: SONGTROVE_GUEST
+        value: "1"
     disk:
       name: songtrove-data
       mountPath: /var/data

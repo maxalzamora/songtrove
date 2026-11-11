@@ -6,14 +6,23 @@
 {% block content %}
 <section class="library-head">
   <div class="library-heading">
-    <p class="eyebrow">Personal chord library</p>
+    <p class="eyebrow">{{ 'Guest preview' if is_guest else 'Personal chord library' }}</p>
     <h1>Songtrove</h1>
-    <p class="lede">Pick a song from the list or add something new. Tuning, capo and ratings stay with each song.</p>
+    <p class="lede">
+      {% if is_guest %}
+        Browse these public-domain songs, open a chord sheet, search the list or
+        use Fit to screen. Editing is disabled in guest mode.
+      {% else %}
+        Pick a song from the list or add something new. Tuning, capo and ratings stay with each song.
+      {% endif %}
+    </p>
   </div>
-  <a class="btn btn-primary" href="{{ url_for('new_song') }}">
-    <span aria-hidden="true">+</span>
-    Add a song
-  </a>
+  {% if not is_guest %}
+    <a class="btn btn-primary" href="{{ url_for('new_song') }}">
+      <span aria-hidden="true">+</span>
+      Add a song
+    </a>
+  {% endif %}
 </section>
 
 <section class="library" aria-labelledby="library-heading">
@@ -99,8 +108,14 @@
     </div>
   {% elif total == 0 %}
     <div class="empty-state">
-      <p class="empty-title">Your library is empty</p>
-      <p><a href="{{ url_for('new_song') }}">Add your first song</a> and it will show up here.</p>
+      <p class="empty-title">{{ 'The guest library is empty' if is_guest else 'Your library is empty' }}</p>
+      <p>
+        {% if is_guest %}
+          The sample songs are not available right now.
+        {% else %}
+          <a href="{{ url_for('new_song') }}">Add your first song</a> and it will show up here.
+        {% endif %}
+      </p>
     </div>
   {% else %}
     <div class="empty-state">

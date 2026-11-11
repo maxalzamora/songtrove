@@ -229,7 +229,6 @@ class AuthenticationTests(unittest.TestCase):
 
     def test_private_pages_redirect_to_login(self):
         for path in (
-            "/",
             "/song/1",
             "/song/1/edit",
             "/songs/new",
@@ -241,6 +240,19 @@ class AuthenticationTests(unittest.TestCase):
             response = self.client.get(path)
             self.assertEqual(response.status_code, 302)
             self.assertIn("/login", response.headers["Location"])
+
+    def test_landing_page_is_public(self):
+        response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertIn('class="landing-hero"', page)
+        self.assertIn("A quiet home for the songs you play.", page)
+        self.assertIn("Log in to your library", page)
+        self.assertIn('href="/login"', page)
+        self.assertIn("guest library is read-only", page)
+        self.assertIn("Browse the guest library", page)
+        self.assertIn('action="/guest"', page)
 
     def test_health_check_is_public(self):
         response = self.client.get("/healthz")
@@ -263,8 +275,118 @@ class AuthenticationTests(unittest.TestCase):
 
         response = self.client.post("/logout")
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.headers["Location"].endswith("/login"))
-        self.assertEqual(self.client.get("/").status_code, 302)
+        self.assertTrue(response.headers["Location"].endswith("/"))
+        landing = self.client.get("/")
+        self.assertEqual(landing.status_code, 200)
+        self.assertIn(
+            "Log in to your library", landing.get_data(as_text=True)
+        )
+
+    def test_guest_mode_opens_read_only_public_domain_library(self):
+        self.client.post(
+            "/songs/new",
+            data={
+                "title": "Private Song",
+                "artist": "Private Artist",
+                "content": "G",
+            },
+        )
+
+        response = self.client.post("/guest")
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers["Location"].endswith("/"))
+
+        with self.app.app_context():
+            guest = db.get_user_by_username("guest")
+            self.assertIsNotNone(guest)
+            self.assertEqual(guest["role"], db.ROLE_MEMBER)
+            self.assertEqual(guest["is_guest"], 1)
+            songs = db.list_songs(guest["id"], "", "recent")
+            self.assertEqual(
+                sorted(song["title"] for song in songs),
+                ["Amazing Grace", "Scarborough Fair", "Wayfaring Stranger"],
+            )
+            song_id = int(songs[0]["id"])
+
+        page = self.client.get("/").get_data(as_text=True)
+        self.assertIn("Guest library", page)
+        self.assertIn("Amazing Grace", page)
+        self.assertNotIn("Private Song", page)
+        self.assertIn("Exit guest", page)
+
+        detail = self.client.get(f"/song/{song_id}")
+        self.assertEqual(detail.status_code, 200)
+        self.assertIn("Chords &amp; lyrics", detail.get_data(as_text=True))
+        self.assertNotIn("Edit song", detail.get_data(as_text=True))
+        self.assertNotIn("Delete song", detail.get_data(as_text=True))
+
+        for path in (
+            "/songs/new",
+            f"/song/{song_id}/edit",
+            "/import",
+            "/export",
+            "/users",
+            "/account/password",
+        ):
+            blocked = self.client.get(path)
+            self.assertEqual(blocked.status_code, 302)
+            self.assertTrue(blocked.headers["Location"].endswith("/"))
+
+        blocked_post = self.client.post(
+            "/songs/new",
+            data={
+                "title": "Guest Song",
+                "artist": "Guest Artist",
+                "content": "C",
+            },
+        )
+        self.assertEqual(blocked_post.status_code, 302)
+        self.assertTrue(blocked_post.headers["Location"].endswith("/"))
+
+        with self.app.app_context():
+            guest = db.get_user_by_username("guest")
+            self.assertEqual(db.count_songs(guest["id"]), 3)
+
+        json_blocked = self.client.post(
+            "/songs/new",
+            data={"title": "JSON Guest Song", "artist": "Guest", "content": "D"},
+            headers={"Accept": "application/json"},
+        )
+        self.assertEqual(json_blocked.status_code, 403)
+        self.assertEqual(
+            json_blocked.get_json(),
+            {"ok": False, "error": "The guest library is read-only."},
+        )
+
+        logout = self.client.post("/logout")
+        self.assertEqual(logout.status_code, 302)
+        self.assertTrue(logout.headers["Location"].endswith("/"))
+        self.assertIn(
+            "Browse the guest library",
+            self.client.get("/").get_data(as_text=True),
+        )
+
+    def test_guest_login_can_be_disabled(self):
+        self.app.config["GUEST_MODE"] = False
+
+        response = self.client.post("/guest")
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_guest_login_refuses_an_unmarked_guest_account(self):
+        with self.app.app_context():
+            db.create_user(
+                username="guest",
+                password_hash=generate_password_hash("private-password"),
+                role=db.ROLE_MEMBER,
+            )
+
+        response = self.client.post("/guest", follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Guest access is unavailable.", response.get_data(as_text=True))
+        with self.client.session_transaction() as session:
+            self.assertIsNone(session.get("user_id"))
 
     def test_csrf_token_is_required_and_accepted(self):
         self.app.config["WTF_CSRF_ENABLED"] = True
@@ -1000,7 +1122,7 @@ class UserRegistryTests(unittest.TestCase):
         with self.app.app_context():
             self.assertEqual(db.get_user(member_id)["is_active"], 0)
 
-        self.assertEqual(member_client.get("/").status_code, 302)
+        self.assertEqual(member_client.get("/songs/new").status_code, 302)
         blocked_client = self.app.test_client()
         response = blocked_client.post(
             "/login", data={"username": "member", "password": password}
@@ -1009,7 +1131,7 @@ class UserRegistryTests(unittest.TestCase):
         self.assertIn("Wrong username or password.", response.get_data(as_text=True))
 
         self.client.post(f"/users/{member_id}/toggle")
-        self.assertEqual(member_client.get("/").status_code, 302)
+        self.assertEqual(member_client.get("/songs/new").status_code, 302)
         enabled_client = self._login("member", password)
         self.assertEqual(enabled_client.get("/").status_code, 200)
 
@@ -1040,7 +1162,7 @@ class UserRegistryTests(unittest.TestCase):
             },
         )
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(member_client.get("/").status_code, 302)
+        self.assertEqual(member_client.get("/songs/new").status_code, 302)
 
         old_client = self.app.test_client()
         old_response = old_client.post(
@@ -1067,7 +1189,7 @@ class UserRegistryTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 302)
         self.assertEqual(first_client.get("/").status_code, 200)
-        self.assertEqual(second_client.get("/").status_code, 302)
+        self.assertEqual(second_client.get("/songs/new").status_code, 302)
 
         old_client = self.app.test_client()
         old_response = old_client.post(

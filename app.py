@@ -6,6 +6,7 @@ import json
 import os
 import re
 import secrets
+import threading
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -29,6 +30,7 @@ from flask_wtf.csrf import CSRFError, CSRFProtect
 from werkzeug.security import check_password_hash, generate_password_hash
 
 import db
+from guest_data import GUEST_SONGS
 from render import chord_sheet_html, merge_edited_text, plain_sheet_text
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -38,6 +40,25 @@ load_dotenv(BASE_DIR / ".env")
 
 DUMMY_PASSWORD_HASH = generate_password_hash(secrets.token_hex(16))
 USERNAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{2,31}$")
+GUEST_USERNAME = "guest"
+GUEST_SEED_LOCK = threading.Lock()
+GUEST_BLOCKED_ENDPOINTS = frozenset(
+    {
+        "new_song",
+        "edit_song",
+        "save_song",
+        "update_song",
+        "delete_song",
+        "import_songs",
+        "export_songs",
+        "account_password",
+        "users",
+        "new_user",
+        "toggle_user",
+        "update_user_role",
+        "reset_user_password",
+    }
+)
 
 
 def create_app(database_path: str | None = None) -> Flask:
@@ -57,6 +78,7 @@ def create_app(database_path: str | None = None) -> Flask:
         SESSION_COOKIE_SECURE=_env_flag("SONGTROVE_SECURE_COOKIES"),
         PERMANENT_SESSION_LIFETIME=timedelta(days=30),
         LOGIN_FAILURE_DELAY=0.4,
+        GUEST_MODE=_env_flag("SONGTROVE_GUEST", default=True),
     )
     CSRFProtect(app)
     db.init_app(app)
@@ -103,8 +125,33 @@ def create_app(database_path: str | None = None) -> Flask:
         return None
 
     @app.before_request
+    def enforce_guest_read_only():
+        if not session.get("guest"):
+            return None
+        if request.endpoint in {"logout", "guest_login", "static", "healthz"}:
+            return None
+        if (
+            request.method in {"GET", "HEAD", "OPTIONS"}
+            and request.endpoint not in GUEST_BLOCKED_ENDPOINTS
+        ):
+            return None
+        if _wants_json():
+            return (
+                jsonify(ok=False, error="The guest library is read-only."),
+                403,
+            )
+        flash("The guest library is read-only. Log in to make changes.", "info")
+        return redirect(url_for("index"))
+
+    @app.before_request
     def require_login():
-        if request.endpoint in {"login", "static", "healthz"}:
+        if request.endpoint in {
+            "index",
+            "login",
+            "guest_login",
+            "static",
+            "healthz",
+        }:
             return None
         if request.endpoint is None:
             return None
@@ -119,22 +166,26 @@ def create_app(database_path: str | None = None) -> Flask:
 
     @app.context_processor
     def inject_current_user():
+        context = {
+            "is_guest": bool(session.get("guest")),
+            "guest_mode": app.config["GUEST_MODE"],
+        }
         user = getattr(g, "user", None)
         if user is None:
-            return {"current_user": None}
-        return {
-            "current_user": {
-                key: user[key]
-                for key in (
-                    "id",
-                    "username",
-                    "role",
-                    "is_active",
-                    "created_at",
-                    "last_login_at",
-                )
-            }
+            context["current_user"] = None
+            return context
+        context["current_user"] = {
+            key: user[key]
+            for key in (
+                "id",
+                "username",
+                "role",
+                "is_active",
+                "created_at",
+                "last_login_at",
+            )
         }
+        return context
 
     def require_admin():
         if g.user is None or g.user["role"] != db.ROLE_ADMIN:
@@ -183,11 +234,52 @@ def create_app(database_path: str | None = None) -> Flask:
             "login.html", error=error, next=next_url or ""
         )
 
+    @app.post("/guest")
+    def guest_login():
+        if not app.config["GUEST_MODE"]:
+            abort(404)
+
+        with GUEST_SEED_LOCK:
+            guest = db.get_user_by_username(GUEST_USERNAME)
+            if guest is None:
+                try:
+                    db.create_user(
+                        username=GUEST_USERNAME,
+                        password_hash=generate_password_hash(
+                            secrets.token_hex(32)
+                        ),
+                        role=db.ROLE_MEMBER,
+                        is_guest=True,
+                    )
+                except db.UsernameTaken:
+                    pass
+                guest = db.get_user_by_username(GUEST_USERNAME)
+
+            if (
+                guest is None
+                or not guest["is_active"]
+                or not guest["is_guest"]
+                or guest["role"] != db.ROLE_MEMBER
+            ):
+                flash("Guest access is unavailable.", "error")
+                return redirect(url_for("index"))
+
+            if db.count_songs(guest["id"]) == 0:
+                for song in GUEST_SONGS:
+                    db.add_manual_song(user_id=guest["id"], **song)
+                guest = db.get_user(guest["id"]) or guest
+
+        session.clear()
+        session["user_id"] = int(guest["id"])
+        session["session_version"] = int(guest["session_version"])
+        session["guest"] = True
+        return redirect(url_for("index"))
+
     @app.post("/logout")
     def logout():
         session.clear()
         flash("Logged out.", "info")
-        return redirect(url_for("login"))
+        return redirect(url_for("index"))
 
     @app.get("/users")
     def users():
@@ -308,6 +400,9 @@ def create_app(database_path: str | None = None) -> Flask:
 
     @app.get("/")
     def index():
+        if g.user is None:
+            return render_template("landing.html")
+
         user_id = g.user["id"]
         query = request.args.get("q", "").strip()
         sort = request.args.get("sort", "recent")
@@ -783,8 +878,11 @@ def _load_auth_config() -> tuple[str, str]:
     return username, password_hash
 
 
-def _env_flag(name: str) -> bool:
-    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+def _env_flag(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name, "").strip().lower()
+    if not value:
+        return default
+    return value in {"1", "true", "yes", "on"}
 
 
 def _safe_next_url(target: str) -> str | None:

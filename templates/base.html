@@ -20,22 +20,35 @@
       </a>
       <nav class="site-nav" aria-label="Main">
         {% if current_user %}
-          <a href="{{ url_for('index') }}">Library</a>
-          <a class="nav-add" href="{{ url_for('new_song') }}">Add song</a>
-          {% if current_user['role'] == 'admin' %}
-            <a class="nav-users" href="{{ url_for('users') }}">Users</a>
+          <a class="nav-library" href="{{ url_for('index') }}">Library</a>
+          {% if not is_guest %}
+            <a class="nav-add" href="{{ url_for('new_song') }}">Add song</a>
+            {% if current_user['role'] == 'admin' %}
+              <a class="nav-users" href="{{ url_for('users') }}">Users</a>
+            {% endif %}
+            <a href="{{ url_for('account_password') }}">Account</a>
+          {% else %}
+            <span class="nav-guest">Guest</span>
           {% endif %}
-          <a href="{{ url_for('account_password') }}">Account</a>
           <form class="nav-logout" method="post" action="{{ url_for('logout') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit">Log out</button>
+            <button type="submit">{{ 'Exit guest' if is_guest else 'Log out' }}</button>
           </form>
+        {% else %}
+          <a class="nav-login" href="{{ url_for('login') }}">Log in</a>
         {% endif %}
       </nav>
     </div>
   </header>
 
   <main class="page">
+    {% if is_guest %}
+      <div class="guest-banner" role="status">
+        <strong>Guest library</strong>
+        <span>Browse and open the songs below. Editing and imports are disabled.</span>
+      </div>
+    {% endif %}
+
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         <div class="flashes">
@@ -52,9 +65,13 @@
   <footer class="site-footer">
     <div class="footer-inner">
       <p>Chords and lyrics belong to their authors.</p>
-      {% if current_user %}
+      {% if current_user and not is_guest %}
         <a href="{{ url_for('import_songs') }}">Import songs</a>
         <a href="{{ url_for('export_songs') }}">Export songs</a>
+      {% elif is_guest %}
+        <span class="footer-note">Read-only guest library</span>
+      {% else %}
+        <span class="footer-note">Private chord &amp; lyric library</span>
       {% endif %}
     </div>
   </footer>

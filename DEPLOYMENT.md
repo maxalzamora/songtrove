@@ -108,6 +108,11 @@ to `.env`. The `sed` command makes the session cookie HTTPS-only. Confirm that
 `.env` contains the absolute database path for this account, for example
 `/home/USERNAME/Songtrove/data/songtrove.db`.
 
+Guest access is enabled by default. On the first visit to the guest library, the
+app creates a read-only member account with a few public-domain songs. It never
+gets admin access and cannot modify songs. Set `SONGTROVE_GUEST=0` in `.env` to
+disable and hide guest access.
+
 ### Configure the web app
 
 In the PythonAnywhere **Web** tab:
@@ -218,6 +223,7 @@ SONGTROVE_USERNAME=songtrove
 SONGTROVE_PASSWORD_HASH=paste-the-generated-hash
 SONGTROVE_DB=/var/lib/songtrove/songtrove.db
 SONGTROVE_SECURE_COOKIES=1
+SONGTROVE_GUEST=1
 ```
 
 Then protect it:
