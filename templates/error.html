@@ -5,7 +5,7 @@
 {% block content %}
 <section class="error-page">
   <p class="eyebrow">Error {{ code }}</p>
-  <h1>{{ 'Page not found' if code == 404 else 'Something went wrong' }}</h1>
+  <h1>{{ 'Page not found' if code == 404 else ('Access denied' if code == 403 else 'Something went wrong') }}</h1>
   <p class="lede">{{ message }}</p>
   <a class="btn btn-primary" href="{{ url_for('index') }}">Back to your library</a>
 </section>

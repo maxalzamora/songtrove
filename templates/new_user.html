@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Add user · Songtrove{% endblock %}
+
+{% block content %}
+<article class="edit-page">
+  <a class="back-link" href="{{ url_for('users') }}">← Back to users</a>
+
+  <header class="edit-head">
+    <p class="eyebrow">Administration</p>
+    <h1>Add user</h1>
+    <p class="edit-subtitle">Members get their own private library. Admins can also manage accounts.</p>
+  </header>
+
+  <form class="song-form" method="post" action="{{ url_for('new_user') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    {% if errors %}
+      <div class="form-errors" role="alert">
+        <p class="form-errors-title">Couldn't add that user.</p>
+        {% for error in errors %}
+          <p>{{ error }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="form-grid">
+      <div class="field field-title">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" value="{{ form['username'] }}" autocomplete="off" minlength="3" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,31}" required autofocus>
+        <p class="field-help">3–32 letters, numbers, dots, dashes or underscores.</p>
+      </div>
+
+      <div class="field field-artist">
+        <label for="role">Role</label>
+        <select id="role" name="role">
+          <option value="member"{% if form['role'] == 'member' %} selected{% endif %}>Member</option>
+          <option value="admin"{% if form['role'] == 'admin' %} selected{% endif %}>Admin</option>
+        </select>
+        <p class="field-help">Admins can create and manage accounts.</p>
+      </div>
+
+      <div class="field field-tags">
+        <label for="password">Temporary password</label>
+        <input id="password" name="password" type="password" autocomplete="new-password" minlength="12" required>
+        <p class="field-help">At least 12 characters. Share it privately; they can change it later.</p>
+      </div>
+
+      <div class="field field-source">
+        <label for="password-confirm">Confirm password</label>
+        <input id="password-confirm" name="password_confirm" type="password" autocomplete="new-password" minlength="12" required>
+      </div>
+    </div>
+
+    <div class="editor-actions">
+      <button class="btn btn-primary" type="submit">Add user</button>
+      <a class="btn btn-ghost" href="{{ url_for('users') }}">Cancel</a>
+    </div>
+  </form>
+</article>
+{% endblock %}

@@ -1,9 +1,10 @@
 # Songtrove
 
-A self-hosted chord and lyric library for guitar. Add a song by hand — title,
-artist, tuning, capo, notes, source link, tags and the full chord/lyric sheet —
-and keep it in a local SQLite database. Each song gets a 1–5 star performance
-rating and a capo setting that transposes the displayed chord names.
+A self-hosted chord and lyric library for guitar. Each account gets a private
+library: add a song by hand — title, artist, tuning, capo, notes, source link,
+tags and the full chord/lyric sheet — and keep it in a local SQLite database.
+Each song gets a 1–5 star performance rating and a capo setting that transposes
+the displayed chord names.
 
 Repository: <https://github.com/maxalzamora/songtrove>
 
@@ -38,8 +39,14 @@ on the **Add song** page and stored locally.
 - Stored locally in SQLite and available offline.
 - Password-protected access with CSRF protection, so the library can be
   deployed publicly without exposing it.
-- One-click JSON export of the whole library, plus an authenticated import page
-  for restoring an export on another machine or host.
+- Multiple accounts with private libraries. The first admin is created from the
+  environment on a fresh database; that admin can add members or other admins,
+  reset passwords, disable accounts and change roles. Usernames are unique
+  regardless of case, and password changes sign out that account's other
+  sessions.
+- A personal **Account** page for changing your own password.
+- JSON export of the signed-in account's library, plus an authenticated import
+  page for restoring an export into that account.
 - Responsive dark UI and a print stylesheet for paper chord sheets.
 - **Fit to screen** reading view: strips the page down to the chord sheet and
   an **Exit fit** control, splits the song into as many columns as the window
@@ -66,12 +73,29 @@ python3 app.py
 ```
 
 `manage.py set-password` asks for a password and writes a hash to `.env`; the
-plain password is never stored. Then open <http://127.0.0.1:5000> and log in
-with username `songtrove` (change `SONGTROVE_USERNAME` in `.env` if you want a
-different name).
+plain password is never stored. On the first start, the app creates an admin
+account from `SONGTROVE_USERNAME` and that hash. Then open
+<http://127.0.0.1:5000> and log in. The default username is `songtrove`; change
+`SONGTROVE_USERNAME` in `.env` before the first start if you want a different
+name.
 
-If you already have a `.env`, the app reads it automatically. To change the
-password later, run `python3 manage.py set-password` again and restart the app.
+The first start also gives any songs already in the database to that admin. Add
+more accounts from **Users** in the header while signed in as an admin. Members
+see only their own songs; the admin account screens manage users but do not
+expose other members' libraries.
+
+If you already have a `.env`, the app reads it automatically. Those bootstrap
+values are only used when the database has no accounts yet. Change your own
+password from **Account** in the header. As an admin, you can reset another
+account's password from **Users**. If you are locked out, run:
+
+```bash
+python3 manage.py list-users
+python3 manage.py reset-password USERNAME
+```
+
+`manage.py create-user USERNAME --role member` and the corresponding `admin`
+role can also create accounts from the command line.
 
 The server binds to `127.0.0.1` by default, so it is only reachable from the
 same machine. To use it from another device on your network:
@@ -92,21 +116,23 @@ setup in [DEPLOYMENT.md](DEPLOYMENT.md).
 | `PORT`                    | `5000`                   | Port                                         |
 | `SONGTROVE_DB`             | `data/songtrove.db`       | SQLite database file                         |
 | `SECRET_KEY`              | generated in `data/`     | Flask session signing key                    |
-| `SONGTROVE_USERNAME`       | `songtrove`               | Login username                               |
-| `SONGTROVE_PASSWORD_HASH`  | required                 | Password hash from `manage.py hash-password` |
+| `SONGTROVE_USERNAME`       | `songtrove`               | First admin username on an empty database     |
+| `SONGTROVE_PASSWORD_HASH`  | required on first start   | First admin password hash                     |
 | `SONGTROVE_SECURE_COOKIES` | `0`                      | Set to `1` when serving over HTTPS           |
 | `FLASK_DEBUG`             | `0`                      | Set to `1` for debug/reload                  |
 
 ## Data and backup
 
-Everything lives in `data/songtrove.db`. Copy that file to back up the library,
-or use the **Export songs** link in the footer to download a JSON snapshot, then
-restore it through **Import songs**. `data/` is ignored by git so personal data
-is not committed by accident.
+Everything lives in `data/songtrove.db`, including all accounts and their songs.
+Copy that file to back up the whole installation, or use **Export songs** to
+download a JSON snapshot of the signed-in account's library, then restore it
+through **Import songs**. `data/` is ignored by git so personal data is not
+committed by accident.
 
 The database initializer upgrades older library databases in place. Existing
 songs, capo settings, ratings and IDs are preserved; new notes, source links and
-tags start empty.
+tags start empty. On the first multi-account start, the new `users` table is
+created and existing songs are assigned to the first admin.
 
 ## Deployment
 
@@ -125,10 +151,10 @@ the `data/` folder.
   placed in a `<pre>` with `white-space: pre`, which is what keeps the layout
   fixed. It also creates the plain text for the editor and merges edits back
   line by line, so unchanged chord lines keep their `[ch]` markup.
-- `db.py` stores songs in SQLite, creates the schema, and upgrades older
-  databases without losing rows.
-- `app.py` contains the Flask routes and pages, including the manual add form,
-  the full song editor and validation.
+- `db.py` stores accounts and songs in SQLite, creates the schema, scopes every
+  song query to an owner, and upgrades older databases without losing rows.
+- `app.py` contains the Flask routes and pages, including login, account
+  administration, the manual add form, the full song editor and validation.
 - `static/app.js` powers the fit-to-screen view. It measures the widest line at
   each candidate font size, chooses the largest size that fits the window, and
   packs complete sections into columns. Column breaks happen before section
@@ -146,13 +172,17 @@ python3 -m unittest discover -s tests
 
 The tests cover HTML escaping, the "no characters move" rendering guarantee,
 chord auto-detection, capo transposition, the plain-text editor's
-line-preserving merge, authentication and CSRF, the compact song list, search and
-filters, manual song entry and its validation, notes/source links/tags, the full
-song editor, JSON export and import, and the in-place database upgrade. The suite
+line-preserving merge, authentication and CSRF, accounts and private libraries,
+roles and session invalidation, the compact song list, search and filters,
+manual song entry and its validation, notes/source links/tags, the full song
+editor, JSON export and import, and the in-place database upgrade. The suite
 uses only the standard library, so it needs no extra test dependency.
 
 ## Good to know
 
+- Each account has a separate library. The admin account screens manage users
+  but do not expose other members' songs. Disabling an account blocks new
+  logins, and a password reset signs out its existing sessions.
 - The **Fit to screen** control needs JavaScript. Its choice is stored in the
   browser under `songtrove:fit`; no account or server setting is involved.
   Printing always falls back to a single-column chord sheet, even while Fit is

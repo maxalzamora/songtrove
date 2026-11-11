@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import hmac
 import json
 import os
+import re
 import secrets
 import time
 from datetime import datetime, timedelta, timezone
@@ -17,6 +17,7 @@ from flask import (
     Response,
     abort,
     flash,
+    g,
     jsonify,
     redirect,
     render_template,
@@ -25,7 +26,7 @@ from flask import (
     url_for,
 )
 from flask_wtf.csrf import CSRFError, CSRFProtect
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 import db
 from render import chord_sheet_html, merge_edited_text, plain_sheet_text
@@ -34,6 +35,9 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 
 load_dotenv(BASE_DIR / ".env")
+
+DUMMY_PASSWORD_HASH = generate_password_hash(secrets.token_hex(16))
+USERNAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{2,31}$")
 
 
 def create_app(database_path: str | None = None) -> Flask:
@@ -44,8 +48,9 @@ def create_app(database_path: str | None = None) -> Flask:
         DATABASE=database_path
         or os.environ.get("SONGTROVE_DB", str(DATA_DIR / "songtrove.db")),
         MAX_CONTENT_LENGTH=256 * 1024,
-        SONGTROVE_USERNAME=username,
-        SONGTROVE_PASSWORD_HASH=password_hash,
+        BOOTSTRAP_ADMIN_USERNAME=username,
+        BOOTSTRAP_ADMIN_PASSWORD_HASH=password_hash,
+        DUMMY_PASSWORD_HASH=DUMMY_PASSWORD_HASH,
         SESSION_COOKIE_NAME="songtrove_session",
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
@@ -80,12 +85,30 @@ def create_app(database_path: str | None = None) -> Flask:
         return redirect(url_for("login"))
 
     @app.before_request
+    def load_logged_in_user():
+        g.user = None
+        user_id = session.get("user_id")
+        if not user_id:
+            return None
+        user = db.get_user(user_id)
+        if (
+            user is not None
+            and user["is_active"]
+            and int(session.get("session_version", -1))
+            == int(user["session_version"])
+        ):
+            g.user = user
+            return None
+        session.clear()
+        return None
+
+    @app.before_request
     def require_login():
         if request.endpoint in {"login", "static", "healthz"}:
             return None
         if request.endpoint is None:
             return None
-        if session.get("authenticated"):
+        if g.user is not None:
             return None
         if _wants_json():
             return jsonify(ok=False, error="Please log in again."), 401
@@ -94,6 +117,29 @@ def create_app(database_path: str | None = None) -> Flask:
             next_url += "?" + request.query_string.decode()
         return redirect(url_for("login", next=next_url))
 
+    @app.context_processor
+    def inject_current_user():
+        user = getattr(g, "user", None)
+        if user is None:
+            return {"current_user": None}
+        return {
+            "current_user": {
+                key: user[key]
+                for key in (
+                    "id",
+                    "username",
+                    "role",
+                    "is_active",
+                    "created_at",
+                    "last_login_at",
+                )
+            }
+        }
+
+    def require_admin():
+        if g.user is None or g.user["role"] != db.ROLE_ADMIN:
+            abort(403)
+
     @app.get("/healthz")
     def healthz():
         db.get_db().execute("SELECT 1").fetchone()
@@ -101,7 +147,7 @@ def create_app(database_path: str | None = None) -> Flask:
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
-        if session.get("authenticated"):
+        if g.user is not None:
             return redirect(url_for("index"))
 
         next_url = _safe_next_url(
@@ -111,16 +157,20 @@ def create_app(database_path: str | None = None) -> Flask:
         if request.method == "POST":
             username = request.form.get("username", "").strip()
             password = request.form.get("password", "")
-            valid_username = hmac.compare_digest(
-                username, app.config["SONGTROVE_USERNAME"]
+            user = db.get_user_by_username(username)
+            candidate_hash = (
+                user["password_hash"]
+                if user is not None
+                else app.config["DUMMY_PASSWORD_HASH"]
             )
-            valid_password = check_password_hash(
-                app.config["SONGTROVE_PASSWORD_HASH"], password
-            )
-            if valid_username and valid_password:
+            password_ok = check_password_hash(candidate_hash, password)
+
+            if user is not None and user["is_active"] and password_ok:
                 session.clear()
-                session["authenticated"] = True
+                session["user_id"] = int(user["id"])
+                session["session_version"] = int(user["session_version"])
                 session.permanent = True
+                db.record_login(user["id"])
                 return redirect(next_url or url_for("index"))
 
             app.logger.warning("Failed login attempt")
@@ -139,30 +189,148 @@ def create_app(database_path: str | None = None) -> Flask:
         flash("Logged out.", "info")
         return redirect(url_for("login"))
 
+    @app.get("/users")
+    def users():
+        require_admin()
+        return render_template("users.html", users=db.list_users())
+
+    @app.route("/users/new", methods=["GET", "POST"])
+    def new_user():
+        require_admin()
+        form = _empty_user_form()
+        errors: list[str] = []
+        if request.method == "POST":
+            form = _user_form_from_request()
+            errors = _new_user_errors(form)
+            if not errors:
+                try:
+                    db.create_user(
+                        username=form["username"],
+                        password_hash=generate_password_hash(form["password"]),
+                        role=form["role"],
+                    )
+                except db.UsernameTaken:
+                    errors.append("That username is already in use.")
+                else:
+                    flash(f"Added “{form['username']}”.", "success")
+                    return redirect(url_for("users"))
+
+        return render_template("new_user.html", form=form, errors=errors)
+
+    @app.post("/users/<int:user_id>/toggle")
+    def toggle_user(user_id: int):
+        require_admin()
+        user = db.get_user(user_id) or abort(404)
+        if user["id"] == g.user["id"]:
+            flash("You cannot disable your own account.", "error")
+            return redirect(url_for("users"))
+        if (
+            user["is_active"]
+            and user["role"] == db.ROLE_ADMIN
+            and db.count_active_admins() <= 1
+        ):
+            flash("Keep at least one active admin.", "error")
+            return redirect(url_for("users"))
+
+        db.set_user_active(user_id, not user["is_active"])
+        action = "Enabled" if not user["is_active"] else "Disabled"
+        flash(f"{action} “{user['username']}”.", "info")
+        return redirect(url_for("users"))
+
+    @app.post("/users/<int:user_id>/role")
+    def update_user_role(user_id: int):
+        require_admin()
+        user = db.get_user(user_id) or abort(404)
+        role = request.form.get("role", "").strip().lower()
+        if role not in db.ROLES:
+            flash("Choose a valid role.", "error")
+            return redirect(url_for("users"))
+        if (
+            user["role"] == db.ROLE_ADMIN
+            and role != db.ROLE_ADMIN
+            and user["is_active"]
+            and db.count_active_admins() <= 1
+        ):
+            flash("Keep at least one active admin.", "error")
+            return redirect(url_for("users"))
+
+        db.set_user_role(user_id, role)
+        flash(f"Updated the role for “{user['username']}”.", "info")
+        if user["id"] == g.user["id"]:
+            return redirect(url_for("index"))
+        return redirect(url_for("users"))
+
+    @app.route("/users/<int:user_id>/password", methods=["GET", "POST"])
+    def reset_user_password(user_id: int):
+        require_admin()
+        user = db.get_user(user_id) or abort(404)
+        errors: list[str] = []
+        if request.method == "POST":
+            password = request.form.get("password", "")
+            confirmation = request.form.get("password_confirm", "")
+            errors = _password_errors(password, confirmation)
+            if not errors:
+                db.set_user_password(user_id, generate_password_hash(password))
+                if user["id"] == g.user["id"]:
+                    refreshed = db.get_user(user_id)
+                    session["session_version"] = int(
+                        refreshed["session_version"]
+                    )
+                flash(f"Reset the password for “{user['username']}”.", "success")
+                return redirect(url_for("users"))
+
+        return render_template("reset_password.html", target=user, errors=errors)
+
+    @app.route("/account/password", methods=["GET", "POST"])
+    def account_password():
+        errors: list[str] = []
+        if request.method == "POST":
+            current_password = request.form.get("current_password", "")
+            password = request.form.get("password", "")
+            confirmation = request.form.get("password_confirm", "")
+            if not check_password_hash(
+                g.user["password_hash"], current_password
+            ):
+                errors.append("Your current password is incorrect.")
+            errors.extend(_password_errors(password, confirmation))
+            if not errors:
+                db.set_user_password(
+                    g.user["id"], generate_password_hash(password)
+                )
+                refreshed = db.get_user(g.user["id"])
+                session["session_version"] = int(
+                    refreshed["session_version"]
+                )
+                flash("Changed your password.", "success")
+                return redirect(url_for("index"))
+
+        return render_template("account_password.html", errors=errors)
+
     @app.get("/")
     def index():
+        user_id = g.user["id"]
         query = request.args.get("q", "").strip()
         sort = request.args.get("sort", "recent")
         if sort not in db.SORT_ORDERS:
             sort = "recent"
 
-        available_tags = db.list_tags()
+        available_tags = db.list_tags(user_id)
         tag = request.args.get("tag", "").strip().lstrip("#").casefold()
 
         rating = request.args.get("rating", "").strip()
         if rating not in {"", "0", "3", "4", "5"}:
             rating = ""
 
-        available_tunings = db.list_tunings()
+        available_tunings = db.list_tunings(user_id)
         tuning = request.args.get("tuning", "").strip()
 
         songs = db.list_songs(
-            query, sort, tag=tag, rating=rating, tuning=tuning
+            user_id, query, sort, tag=tag, rating=rating, tuning=tuning
         )
         return render_template(
             "index.html",
             songs=songs,
-            total=db.count_songs(),
+            total=db.count_songs(user_id),
             query=query,
             sort=sort,
             tag=tag,
@@ -187,6 +355,7 @@ def create_app(database_path: str | None = None) -> Flask:
                 )
 
             song_id = db.add_manual_song(
+                user_id=g.user["id"],
                 title=form["title"],
                 artist=form["artist"],
                 content=form["content"],
@@ -204,7 +373,7 @@ def create_app(database_path: str | None = None) -> Flask:
 
     @app.get("/song/<int:song_id>")
     def song_detail(song_id: int):
-        song = db.get_song(song_id) or abort(404)
+        song = db.get_song(song_id, g.user["id"]) or abort(404)
         # The capo is a transposition control: chords are shown as the shapes
         # to play with that capo, so the song keeps its original concert pitch.
         capo = _clamp(song["capo"], 0, 12, 0)
@@ -216,7 +385,7 @@ def create_app(database_path: str | None = None) -> Flask:
 
     @app.get("/song/<int:song_id>/edit")
     def edit_song(song_id: int):
-        song = db.get_song(song_id) or abort(404)
+        song = db.get_song(song_id, g.user["id"]) or abort(404)
         return render_template(
             "edit_song.html",
             song=song,
@@ -226,7 +395,7 @@ def create_app(database_path: str | None = None) -> Flask:
 
     @app.post("/song/<int:song_id>/edit")
     def save_song(song_id: int):
-        song = db.get_song(song_id) or abort(404)
+        song = db.get_song(song_id, g.user["id"]) or abort(404)
         form = _song_form_from_request()
         errors = _song_form_errors(form)
         if errors:
@@ -239,6 +408,7 @@ def create_app(database_path: str | None = None) -> Flask:
 
         db.update_song(
             song_id,
+            user_id=g.user["id"],
             title=form["title"],
             artist=form["artist"],
             content=merge_edited_text(song["content"], form["content"]),
@@ -254,7 +424,7 @@ def create_app(database_path: str | None = None) -> Flask:
 
     @app.post("/song/<int:song_id>/update")
     def update_song(song_id: int):
-        song = db.get_song(song_id) or abort(404)
+        song = db.get_song(song_id, g.user["id"]) or abort(404)
         capo = None
         rating = None
         if "capo" in request.form:
@@ -262,7 +432,9 @@ def create_app(database_path: str | None = None) -> Flask:
         if "rating" in request.form:
             rating = _clamp(request.form.get("rating"), 0, 5, 0)
 
-        db.update_settings(song_id, capo=capo, rating=rating)
+        db.update_settings(
+            song_id, user_id=g.user["id"], capo=capo, rating=rating
+        )
 
         if _wants_json():
             return jsonify(
@@ -276,14 +448,17 @@ def create_app(database_path: str | None = None) -> Flask:
 
     @app.post("/song/<int:song_id>/delete")
     def delete_song(song_id: int):
-        song = db.get_song(song_id) or abort(404)
-        db.delete_song(song_id)
+        song = db.get_song(song_id, g.user["id"]) or abort(404)
+        db.delete_song(song_id, user_id=g.user["id"])
         flash(f"Removed “{song['title']}” from your library.", "info")
         return redirect(url_for("index"))
 
     @app.get("/export")
     def export_songs():
-        songs = [dict(song) for song in db.list_songs("", "recent")]
+        songs = [
+            dict(song)
+            for song in db.list_songs(g.user["id"], "", "recent")
+        ]
         payload = json.dumps({"songs": songs}, indent=2, ensure_ascii=False)
         return Response(
             payload,
@@ -373,7 +548,9 @@ def create_app(database_path: str | None = None) -> Flask:
 
                         if not errors:
                             for song in imported:
-                                db.add_manual_song(**song)
+                                db.add_manual_song(
+                                    user_id=g.user["id"], **song
+                                )
                             flash(
                                 f"Imported {len(imported)} "
                                 f"song{'s' if len(imported) != 1 else ''}.",
@@ -388,6 +565,17 @@ def create_app(database_path: str | None = None) -> Flask:
                 )
 
         return render_template("import_songs.html", errors=[])
+
+    @app.errorhandler(403)
+    def forbidden(_error):
+        return (
+            render_template(
+                "error.html",
+                code=403,
+                message="You don't have access to that page.",
+            ),
+            403,
+        )
 
     @app.errorhandler(404)
     def not_found(_error):
@@ -433,6 +621,43 @@ def create_app(database_path: str | None = None) -> Flask:
         return db.parse_tags(value)
 
     return app
+
+
+def _empty_user_form() -> dict[str, str]:
+    return {"username": "", "role": db.ROLE_MEMBER, "password": "", "password_confirm": ""}
+
+
+def _user_form_from_request() -> dict[str, str]:
+    return {
+        "username": request.form.get("username", "").strip(),
+        "role": request.form.get("role", db.ROLE_MEMBER).strip().lower(),
+        "password": request.form.get("password", ""),
+        "password_confirm": request.form.get("password_confirm", ""),
+    }
+
+
+def _new_user_errors(form: dict[str, str]) -> list[str]:
+    errors: list[str] = []
+    if not USERNAME_RE.fullmatch(form["username"]):
+        errors.append(
+            "Use 3–32 letters, numbers, dots, dashes or underscores, "
+            "starting with a letter or number."
+        )
+    errors.extend(_password_errors(form["password"], form["password_confirm"]))
+    if form["role"] not in db.ROLES:
+        errors.append("Choose a valid role.")
+    return errors
+
+
+def _password_errors(password: str, confirmation: str) -> list[str]:
+    errors: list[str] = []
+    if len(password) < 12:
+        errors.append("Use a password with at least 12 characters.")
+    if len(password) > 200:
+        errors.append("Keep the password under 200 characters.")
+    if password != confirmation:
+        errors.append("The passwords do not match.")
+    return errors
 
 
 def _empty_song_form() -> dict[str, str | int]:
@@ -555,12 +780,6 @@ def _load_auth_config() -> tuple[str, str]:
         os.environ.get("SONGTROVE_USERNAME", "songtrove").strip() or "songtrove"
     )
     password_hash = os.environ.get("SONGTROVE_PASSWORD_HASH", "").strip()
-    if not password_hash:
-        raise RuntimeError(
-            "SONGTROVE_PASSWORD_HASH is not set. Run "
-            "`python3 manage.py set-password` for local use, or set the "
-            "environment variable in your host's dashboard."
-        )
     return username, password_hash
 
 

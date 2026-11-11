@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Users · Songtrove{% endblock %}
+
+{% block content %}
+<article class="edit-page users-page">
+  <a class="back-link" href="{{ url_for('index') }}">← Back to library</a>
+
+  <header class="edit-head">
+    <p class="eyebrow">Administration</p>
+    <h1>Users</h1>
+    <p class="edit-subtitle">Create accounts, reset passwords and control who can use this Songtrove.</p>
+  </header>
+
+  <div class="users-toolbar">
+    <a class="btn btn-primary" href="{{ url_for('new_user') }}">Add user</a>
+    <p>{{ users|length }} {% if users|length == 1 %}account{% else %}accounts{% endif %}</p>
+  </div>
+
+  <div class="user-list">
+    {% for user in users %}
+      <section class="user-card">
+        <div class="user-card-head">
+          <div class="user-card-title">
+            <h2>
+              {{ user['username'] }}
+              {% if user['id'] == current_user['id'] %}
+                <span class="user-you">you</span>
+              {% endif %}
+            </h2>
+            <p class="user-meta">
+              Added {{ user['created_at']|pretty_date }}
+              {% if user['last_login_at'] %}
+                · Last login {{ user['last_login_at']|pretty_date }}
+              {% else %}
+                · Not logged in yet
+              {% endif %}
+            </p>
+          </div>
+          <div class="user-card-chips">
+            <span class="chip{% if user['role'] == 'admin' %} chip-accent{% endif %}">{{ user['role'] }}</span>
+            <span class="chip{% if not user['is_active'] %} chip-quiet{% endif %}">{{ 'Active' if user['is_active'] else 'Disabled' }}</span>
+          </div>
+        </div>
+
+        <div class="user-card-actions">
+          <a class="btn btn-ghost btn-small" href="{{ url_for('reset_user_password', user_id=user['id']) }}">Reset password</a>
+
+          <form class="role-form" method="post" action="{{ url_for('update_user_role', user_id=user['id']) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label class="sr-only" for="role-{{ user['id'] }}">Role for {{ user['username'] }}</label>
+            <select id="role-{{ user['id'] }}" name="role" aria-label="Role for {{ user['username'] }}">
+              <option value="member"{% if user['role'] == 'member' %} selected{% endif %}>Member</option>
+              <option value="admin"{% if user['role'] == 'admin' %} selected{% endif %}>Admin</option>
+            </select>
+            <button class="btn btn-ghost btn-small" type="submit">Save role</button>
+          </form>
+
+          {% if user['id'] != current_user['id'] %}
+            <form method="post" action="{{ url_for('toggle_user', user_id=user['id']) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-small {% if user['is_active'] %}btn-ghost{% else %}btn-primary{% endif %}" type="submit">
+                {{ 'Disable' if user['is_active'] else 'Enable' }}
+              </button>
+            </form>
+          {% endif %}
+        </div>
+      </section>
+    {% endfor %}
+  </div>
+</article>
+{% endblock %}

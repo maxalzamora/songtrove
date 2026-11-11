@@ -85,6 +85,14 @@ def log_in(client) -> None:
         raise AssertionError(f"login failed: {response.status_code}")
 
 
+def bootstrap_user_id(app) -> int:
+    with app.app_context():
+        user = db.get_user_by_username(TEST_USERNAME)
+        if user is None:
+            raise AssertionError("bootstrap admin was not created")
+        return int(user["id"])
+
+
 class RenderTests(unittest.TestCase):
     def test_preserves_every_visible_character(self):
         rendered = chord_sheet_html(CONTENT)
@@ -213,13 +221,23 @@ class AuthenticationTests(unittest.TestCase):
         self.app.config.update(
             TESTING=True, WTF_CSRF_ENABLED=False, LOGIN_FAILURE_DELAY=0
         )
+        self.user_id = bootstrap_user_id(self.app)
         self.client = self.app.test_client()
 
     def tearDown(self):
         self.tempdir.cleanup()
 
     def test_private_pages_redirect_to_login(self):
-        for path in ("/", "/song/1", "/song/1/edit", "/songs/new", "/export", "/import"):
+        for path in (
+            "/",
+            "/song/1",
+            "/song/1/edit",
+            "/songs/new",
+            "/export",
+            "/import",
+            "/users",
+            "/account/password",
+        ):
             response = self.client.get(path)
             self.assertEqual(response.status_code, 302)
             self.assertIn("/login", response.headers["Location"])
@@ -237,7 +255,7 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Wrong username or password.", response.get_data(as_text=True))
         with self.client.session_transaction() as session:
-            self.assertFalse(session.get("authenticated"))
+            self.assertIsNone(session.get("user_id"))
 
     def test_login_and_logout(self):
         log_in(self.client)
@@ -257,7 +275,7 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(missing_token.status_code, 302)
         self.assertIn("/login", missing_token.headers["Location"])
         with self.client.session_transaction() as session:
-            self.assertFalse(session.get("authenticated"))
+            self.assertIsNone(session.get("user_id"))
 
         page = self.client.get("/login").get_data(as_text=True)
         token = re.search(
@@ -297,6 +315,7 @@ class ManualSongTests(unittest.TestCase):
         self.app.config.update(
             TESTING=True, WTF_CSRF_ENABLED=False, LOGIN_FAILURE_DELAY=0
         )
+        self.user_id = bootstrap_user_id(self.app)
         self.client = self.app.test_client()
         log_in(self.client)
 
@@ -342,7 +361,7 @@ class ManualSongTests(unittest.TestCase):
         self.assertTrue(response.headers["Location"].endswith("/song/1"))
 
         with self.app.app_context():
-            song = db.get_song(1)
+            song = db.get_song(1, self.user_id)
             self.assertIsNotNone(song)
             self.assertEqual(song["title"], "Manual Song")
             self.assertEqual(song["artist"], "A Player")
@@ -378,7 +397,7 @@ class ManualSongTests(unittest.TestCase):
         )
 
         with self.app.app_context():
-            song = db.get_song(1)
+            song = db.get_song(1, self.user_id)
             self.assertEqual(song["tuning"], db.DEFAULT_TUNING)
 
     def test_requires_title_artist_and_content(self):
@@ -398,7 +417,7 @@ class ManualSongTests(unittest.TestCase):
         self.assertIn("Add the chords or lyrics.", page)
 
         with self.app.app_context():
-            self.assertEqual(db.count_songs(), 0)
+            self.assertEqual(db.count_songs(self.user_id), 0)
 
     def test_clamps_capo_and_rating(self):
         self.client.post(
@@ -413,7 +432,7 @@ class ManualSongTests(unittest.TestCase):
         )
 
         with self.app.app_context():
-            song = db.get_song(1)
+            song = db.get_song(1, self.user_id)
             self.assertEqual(song["capo"], 12)
             self.assertEqual(song["rating"], 0)
 
@@ -433,7 +452,7 @@ class ManualSongTests(unittest.TestCase):
             self.assertIn("source URL", response.get_data(as_text=True))
 
         with self.app.app_context():
-            self.assertEqual(db.count_songs(), 0)
+            self.assertEqual(db.count_songs(self.user_id), 0)
 
     def test_index_uses_a_compact_song_list(self):
         self.client.post(
@@ -524,8 +543,8 @@ class ManualSongTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 302)
         with self.app.app_context():
-            self.assertEqual(db.count_songs(), 2)
-            song = db.get_song(1)
+            self.assertEqual(db.count_songs(self.user_id), 2)
+            song = db.get_song(1, self.user_id)
             self.assertEqual(song["title"], "Imported Song")
             self.assertEqual(song["artist"], "Imported Artist")
             self.assertEqual(song["tuning"], "Drop D")
@@ -535,10 +554,10 @@ class ManualSongTests(unittest.TestCase):
             self.assertEqual(song["source_url"], "https://example.com/imported")
             self.assertEqual(song["tags"], "folk,ballad")
             self.assertEqual(song["content"], "[Verse]\nG\nWords")
-            self.assertEqual(db.get_song(2)["tuning"], db.DEFAULT_TUNING)
-            self.assertEqual(db.get_song(2)["notes"], "")
-            self.assertEqual(db.get_song(2)["source_url"], "")
-            self.assertEqual(db.get_song(2)["tags"], "")
+            self.assertEqual(db.get_song(2, self.user_id)["tuning"], db.DEFAULT_TUNING)
+            self.assertEqual(db.get_song(2, self.user_id)["notes"], "")
+            self.assertEqual(db.get_song(2, self.user_id)["source_url"], "")
+            self.assertEqual(db.get_song(2, self.user_id)["tags"], "")
 
     def test_import_rejects_invalid_json_without_writing(self):
         response = self.client.post(
@@ -552,7 +571,7 @@ class ManualSongTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("not valid JSON", response.get_data(as_text=True))
         with self.app.app_context():
-            self.assertEqual(db.count_songs(), 0)
+            self.assertEqual(db.count_songs(self.user_id), 0)
 
     def test_import_rejects_partial_invalid_file_without_writing(self):
         exported = {
@@ -583,7 +602,7 @@ class ManualSongTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("Song 2 needs a title", response.get_data(as_text=True))
         with self.app.app_context():
-            self.assertEqual(db.count_songs(), 0)
+            self.assertEqual(db.count_songs(self.user_id), 0)
 
     def test_import_rejects_an_invalid_source_url_without_writing(self):
         exported = {
@@ -610,7 +629,7 @@ class ManualSongTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("invalid source URL", response.get_data(as_text=True))
         with self.app.app_context():
-            self.assertEqual(db.count_songs(), 0)
+            self.assertEqual(db.count_songs(self.user_id), 0)
 
     def test_import_page_explains_the_backup_format(self):
         response = self.client.get("/import")
@@ -630,10 +649,12 @@ class IndexFilterTests(unittest.TestCase):
         self.app.config.update(
             TESTING=True, WTF_CSRF_ENABLED=False, LOGIN_FAILURE_DELAY=0
         )
+        self.user_id = bootstrap_user_id(self.app)
         self.client = self.app.test_client()
         log_in(self.client)
         with self.app.app_context():
             db.add_manual_song(
+                user_id=self.user_id,
                 title="Folk Song",
                 artist="Folk Artist",
                 notes="Play gently and let the last chord ring.",
@@ -642,6 +663,7 @@ class IndexFilterTests(unittest.TestCase):
                 rating=5,
             )
             db.add_manual_song(
+                user_id=self.user_id,
                 title="Rock Song",
                 artist="Rock Artist",
                 notes="Loud and fast.",
@@ -651,6 +673,7 @@ class IndexFilterTests(unittest.TestCase):
                 rating=3,
             )
             db.add_manual_song(
+                user_id=self.user_id,
                 title="Untagged Song",
                 artist="Quiet Artist",
                 tuning="D A D G B E",
@@ -733,10 +756,12 @@ class EditSongTests(unittest.TestCase):
         self.app.config.update(
             TESTING=True, WTF_CSRF_ENABLED=False, LOGIN_FAILURE_DELAY=0
         )
+        self.user_id = bootstrap_user_id(self.app)
         self.client = self.app.test_client()
         log_in(self.client)
         with self.app.app_context():
             self.song_id = db.add_manual_song(
+                user_id=self.user_id,
                 title="Original Song",
                 artist="Original Artist",
                 tuning="E A D G B E",
@@ -796,7 +821,7 @@ class EditSongTests(unittest.TestCase):
             response.headers["Location"].endswith(f"/song/{self.song_id}")
         )
         with self.app.app_context():
-            song = db.get_song(self.song_id)
+            song = db.get_song(self.song_id, self.user_id)
             self.assertEqual(song["title"], "Renamed Song")
             self.assertEqual(song["artist"], "New Artist")
             self.assertEqual(song["tuning"], "Drop D")
@@ -835,7 +860,7 @@ class EditSongTests(unittest.TestCase):
         self.assertIn("Add an artist.", page)
         self.assertIn("Add the chords or lyrics.", page)
         with self.app.app_context():
-            song = db.get_song(self.song_id)
+            song = db.get_song(self.song_id, self.user_id)
             self.assertEqual(song["title"], "Original Song")
             self.assertEqual(song["artist"], "Original Artist")
             self.assertEqual(song["capo"], 1)
@@ -854,8 +879,218 @@ class EditSongTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 302)
         with self.app.app_context():
-            song = db.get_song(self.song_id)
+            song = db.get_song(self.song_id, self.user_id)
             self.assertEqual(song["tuning"], db.DEFAULT_TUNING)
+
+
+class UserRegistryTests(unittest.TestCase):
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.database = str(Path(self.tempdir.name) / "songtrove.db")
+        self.app = create_app(self.database)
+        self.app.config.update(
+            TESTING=True, WTF_CSRF_ENABLED=False, LOGIN_FAILURE_DELAY=0
+        )
+        self.user_id = bootstrap_user_id(self.app)
+        self.client = self.app.test_client()
+        log_in(self.client)
+
+    def tearDown(self):
+        self.tempdir.cleanup()
+
+    def _create_member(
+        self, username: str = "member", password: str = "member-password"
+    ) -> tuple[int, str]:
+        response = self.client.post(
+            "/users/new",
+            data={
+                "username": username,
+                "password": password,
+                "password_confirm": password,
+                "role": "member",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        with self.app.app_context():
+            user = db.get_user_by_username(username)
+            self.assertIsNotNone(user)
+            self.assertEqual(user["role"], "member")
+            return int(user["id"]), password
+
+    def _login(self, username: str, password: str):
+        client = self.app.test_client()
+        response = client.post(
+            "/login", data={"username": username, "password": password}
+        )
+        self.assertEqual(response.status_code, 302)
+        return client
+
+    def test_admin_can_create_a_member(self):
+        member_id, _ = self._create_member()
+
+        page = self.client.get("/users").get_data(as_text=True)
+        self.assertIn("member", page)
+        self.assertIn("Member", page)
+        self.assertIn("Admin", page)
+        self.assertIn('href="/users/new"', page)
+
+        with self.app.app_context():
+            user = db.get_user(member_id)
+            self.assertEqual(user["role"], "member")
+            self.assertEqual(user["is_active"], 1)
+
+    def test_member_cannot_open_user_management(self):
+        _, password = self._create_member()
+        member_client = self._login("member", password)
+
+        response = member_client.get("/users")
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("Access denied", response.get_data(as_text=True))
+
+    def test_libraries_are_private_to_each_account(self):
+        _, password = self._create_member()
+        member_client = self._login("member", password)
+
+        self.client.post(
+            "/songs/new",
+            data={
+                "title": "Admin Song",
+                "artist": "Admin Artist",
+                "content": "G",
+            },
+        )
+        member_client.post(
+            "/songs/new",
+            data={
+                "title": "Member Song",
+                "artist": "Member Artist",
+                "content": "C",
+            },
+        )
+
+        admin_page = self.client.get("/").get_data(as_text=True)
+        self.assertIn("Admin Song", admin_page)
+        self.assertNotIn("Member Song", admin_page)
+
+        member_page = member_client.get("/").get_data(as_text=True)
+        self.assertIn("Member Song", member_page)
+        self.assertNotIn("Admin Song", member_page)
+
+        self.assertEqual(member_client.get("/song/1").status_code, 404)
+        self.assertEqual(self.client.get("/song/2").status_code, 404)
+
+        admin_export = json.loads(self.client.get("/export").get_data(as_text=True))
+        member_export = json.loads(
+            member_client.get("/export").get_data(as_text=True)
+        )
+        self.assertEqual(
+            [song["title"] for song in admin_export["songs"]], ["Admin Song"]
+        )
+        self.assertEqual(
+            [song["title"] for song in member_export["songs"]], ["Member Song"]
+        )
+
+    def test_admin_can_disable_and_enable_an_account(self):
+        member_id, password = self._create_member()
+        member_client = self._login("member", password)
+        self.assertEqual(member_client.get("/").status_code, 200)
+
+        response = self.client.post(f"/users/{member_id}/toggle")
+        self.assertEqual(response.status_code, 302)
+        with self.app.app_context():
+            self.assertEqual(db.get_user(member_id)["is_active"], 0)
+
+        self.assertEqual(member_client.get("/").status_code, 302)
+        blocked_client = self.app.test_client()
+        response = blocked_client.post(
+            "/login", data={"username": "member", "password": password}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Wrong username or password.", response.get_data(as_text=True))
+
+        self.client.post(f"/users/{member_id}/toggle")
+        self.assertEqual(member_client.get("/").status_code, 302)
+        enabled_client = self._login("member", password)
+        self.assertEqual(enabled_client.get("/").status_code, 200)
+
+    def test_admin_cannot_disable_their_own_account(self):
+        response = self.client.post(f"/users/{self.user_id}/toggle")
+        self.assertEqual(response.status_code, 302)
+        with self.app.app_context():
+            self.assertEqual(db.get_user(self.user_id)["is_active"], 1)
+
+    def test_last_admin_cannot_demote_themselves(self):
+        response = self.client.post(
+            f"/users/{self.user_id}/role", data={"role": "member"}
+        )
+        self.assertEqual(response.status_code, 302)
+        with self.app.app_context():
+            self.assertEqual(db.get_user(self.user_id)["role"], "admin")
+
+    def test_admin_can_reset_a_member_password(self):
+        member_id, old_password = self._create_member()
+        member_client = self._login("member", old_password)
+        new_password = "replacement-password"
+
+        response = self.client.post(
+            f"/users/{member_id}/password",
+            data={
+                "password": new_password,
+                "password_confirm": new_password,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(member_client.get("/").status_code, 302)
+
+        old_client = self.app.test_client()
+        old_response = old_client.post(
+            "/login", data={"username": "member", "password": old_password}
+        )
+        self.assertEqual(old_response.status_code, 200)
+
+        new_client = self._login("member", new_password)
+        self.assertEqual(new_client.get("/").status_code, 200)
+
+    def test_changing_a_password_signs_out_other_sessions(self):
+        _, password = self._create_member()
+        first_client = self._login("member", password)
+        second_client = self._login("member", password)
+        new_password = "changed-member-password"
+
+        response = first_client.post(
+            "/account/password",
+            data={
+                "current_password": password,
+                "password": new_password,
+                "password_confirm": new_password,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(first_client.get("/").status_code, 200)
+        self.assertEqual(second_client.get("/").status_code, 302)
+
+        old_client = self.app.test_client()
+        old_response = old_client.post(
+            "/login", data={"username": "member", "password": password}
+        )
+        self.assertEqual(old_response.status_code, 200)
+        new_client = self._login("member", new_password)
+        self.assertEqual(new_client.get("/").status_code, 200)
+
+    def test_usernames_are_unique_ignoring_case(self):
+        self._create_member("member")
+
+        response = self.client.post(
+            "/users/new",
+            data={
+                "username": "MEMBER",
+                "password": "another-password",
+                "password_confirm": "another-password",
+                "role": "member",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("already in use", response.get_data(as_text=True))
 
 
 class LegacyDatabaseMigrationTests(unittest.TestCase):
@@ -905,9 +1140,10 @@ class LegacyDatabaseMigrationTests(unittest.TestCase):
     def test_migrates_previous_schema_and_keeps_song_data(self):
         app = create_app(self.database)
         app.config.update(TESTING=True)
+        self.user_id = bootstrap_user_id(app)
 
         with app.app_context():
-            song = db.get_song(1)
+            song = db.get_song(1, self.user_id)
             self.assertIsNotNone(song)
             self.assertEqual(song["title"], "Old Song")
             self.assertEqual(song["artist"], "Old Artist")
@@ -915,24 +1151,27 @@ class LegacyDatabaseMigrationTests(unittest.TestCase):
             self.assertEqual(song["tuning"], db.DEFAULT_TUNING)
             self.assertEqual(song["capo"], 2)
             self.assertEqual(song["rating"], 5)
+            self.assertEqual(song["owner_id"], self.user_id)
             self.assertEqual(set(song.keys()), db.TARGET_COLUMNS)
 
-            custom = db.get_song(2)
+            custom = db.get_song(2, self.user_id)
             self.assertEqual(custom["tuning"], "Drop D")
 
             new_id = db.add_manual_song(
+                user_id=self.user_id,
                 title="New Song", artist="New Artist", content="C"
             )
             self.assertEqual(new_id, 3)
-            self.assertEqual(db.get_song(new_id)["tuning"], db.DEFAULT_TUNING)
+            self.assertEqual(db.get_song(new_id, self.user_id)["tuning"], db.DEFAULT_TUNING)
 
         # Running the initializer again must leave the migrated data alone.
         create_app(self.database)
         with app.app_context():
-            self.assertEqual(db.count_songs(), 3)
+            self.assertEqual(db.count_songs(self.user_id), 3)
 
     def test_blank_tuning_is_filled_on_current_schema(self):
         app = create_app(self.database)
+        self.user_id = bootstrap_user_id(app)
         with app.app_context():
             database = db.get_db()
             database.execute("UPDATE songs SET tuning = '' WHERE id = 1")
@@ -940,7 +1179,7 @@ class LegacyDatabaseMigrationTests(unittest.TestCase):
 
         create_app(self.database)
         with app.app_context():
-            self.assertEqual(db.get_song(1)["tuning"], db.DEFAULT_TUNING)
+            self.assertEqual(db.get_song(1, self.user_id)["tuning"], db.DEFAULT_TUNING)
 
     def test_migrates_schema_before_notes_source_and_tags(self):
         with tempfile.TemporaryDirectory() as tempdir:
@@ -967,8 +1206,9 @@ class LegacyDatabaseMigrationTests(unittest.TestCase):
             connection.close()
 
             app = create_app(database_path)
+            self.user_id = bootstrap_user_id(app)
             with app.app_context():
-                song = db.get_song(1)
+                song = db.get_song(1, self.user_id)
                 self.assertEqual(song["title"], "Previous Song")
                 self.assertEqual(song["tuning"], "Drop D")
                 self.assertEqual(song["capo"], 2)
