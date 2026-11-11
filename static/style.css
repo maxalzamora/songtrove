@@ -150,46 +150,11 @@ h3 {
   color: var(--text);
 }
 
-.wide-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.2rem 0.1rem;
-  border: 0;
-  background: none;
-  color: var(--muted);
-  font: inherit;
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-
-.wide-toggle svg {
-  width: 15px;
-  height: 15px;
-}
-
-.wide-toggle:hover {
-  color: var(--text);
-}
-
-.wide-toggle[aria-pressed="true"] {
-  color: var(--accent);
-}
-
 .page {
   flex: 1;
   width: min(1080px, calc(100% - 2.5rem));
   margin: 0 auto;
   padding: 2.4rem 0 4.5rem;
-}
-
-html.is-wide .page,
-html.is-wide .header-inner,
-html.is-wide .footer-inner {
-  width: 100%;
-  max-width: none;
-  padding-left: clamp(1rem, 2.5vw, 2.5rem);
-  padding-right: clamp(1rem, 2.5vw, 2.5rem);
 }
 
 .sr-only {
@@ -1116,11 +1081,6 @@ html.is-wide .footer-inner {
   font-size: 0.74rem;
 }
 
-.fit-note {
-  color: var(--accent);
-  font-size: 0.74rem;
-}
-
 #fit-toggle .icon-collapse {
   display: none;
 }
@@ -1190,16 +1150,19 @@ html.is-wide .footer-inner {
   flex: 0 0 auto;
 }
 
-html.fit-mode .site-header,
-html.fit-mode .site-footer,
-html.fit-mode .back-link,
-html.fit-mode .song-head .chips,
-html.fit-mode .song-actions,
-html.fit-mode .flashes,
-html.fit-mode .sheet-hint,
-html.fit-mode #save-btn,
-html.fit-mode #capo-help {
-  display: none !important;
+@media screen {
+  html.fit-mode .site-header,
+  html.fit-mode .site-footer,
+  html.fit-mode .back-link,
+  html.fit-mode .song-head,
+  html.fit-mode .song-notes-block,
+  html.fit-mode .settings,
+  html.fit-mode .song-actions,
+  html.fit-mode .flashes,
+  html.fit-mode .sheet-bar h2,
+  html.fit-mode .sheet-tools > :not(#fit-toggle) {
+    display: none !important;
+  }
 }
 
 html.fit-mode,
@@ -1225,72 +1188,6 @@ html.fit-mode .song {
   gap: 0.4rem;
 }
 
-html.fit-mode .song-head {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: baseline;
-  gap: 0.3rem 0.65rem;
-  flex-wrap: wrap;
-  margin: 0;
-}
-
-html.fit-mode .song-head .eyebrow {
-  font-size: 0.62rem;
-  letter-spacing: 0.12em;
-}
-
-html.fit-mode .title-row {
-  display: contents;
-}
-
-html.fit-mode .title-row h1 {
-  margin: 0;
-  font-size: clamp(1rem, 1.6vw, 1.35rem);
-  line-height: 1.2;
-}
-
-html.fit-mode .settings {
-  flex: 0 0 auto;
-  margin: 0;
-}
-
-html.fit-mode .settings-form {
-  gap: 1rem 1.6rem;
-  padding: 0.35rem 0.65rem;
-  border-radius: 10px;
-}
-
-html.fit-mode .setting {
-  gap: 0.45rem;
-}
-
-html.fit-mode .setting-label {
-  font-size: 0.63rem;
-}
-
-html.fit-mode .step {
-  width: 30px;
-}
-
-html.fit-mode .stepper input {
-  width: 44px;
-  height: 1.75rem;
-}
-
-html.fit-mode .star svg {
-  width: 20px;
-  height: 20px;
-}
-
-html.fit-mode .setting-actions {
-  gap: 0.5rem;
-}
-
-html.fit-mode .save-status {
-  min-width: 0;
-  font-size: 0.72rem;
-}
-
 html.fit-mode .sheet-panel {
   flex: 1 1 auto;
   min-height: 0;
@@ -1301,6 +1198,8 @@ html.fit-mode .sheet-panel {
 
 html.fit-mode .sheet-bar {
   flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
   margin-bottom: 0.35rem;
 }
 
@@ -1637,14 +1536,6 @@ html.fit-mode .sheet-scroll.is-overflowing {
   }
 
   .site-nav a:first-child {
-    display: none;
-  }
-
-  .wide-toggle {
-    padding: 0.35rem;
-  }
-
-  .wide-toggle span {
     display: none;
   }
 

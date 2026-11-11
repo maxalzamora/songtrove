@@ -41,15 +41,14 @@ on the **Add song** page and stored locally.
 - One-click JSON export of the whole library, plus an authenticated import page
   for restoring an export on another machine or host.
 - Responsive dark UI and a print stylesheet for paper chord sheets.
-- **Wide** button in the header for a full-window layout.
-- **Fit to screen** reading view: hides the surrounding chrome, splits the song
-  into as many columns as the window allows, and scales the monospace text so the
-  whole song is visible at once. Columns are packed at section markers such as
-  `[Verse]`, `[Chorus]`, `[Bridge]`, `Verse 1:` and `C1:`, so a section is not
-  cut between columns. Press **Esc** or click **Exit fit** to leave. The
-  full-width and fit-view choices are remembered in the browser. For very long
-  songs that cannot fit even at the 8px minimum, the sheet scrolls inside the
-  reading view with a visible **Scroll for the rest** note instead of clipping
+- **Fit to screen** reading view: strips the page down to the chord sheet and
+  an **Exit fit** control, splits the song into as many columns as the window
+  allows, and scales the monospace text so the whole song is visible at once.
+  Columns are packed at section markers such as `[Verse]`, `[Chorus]`,
+  `[Bridge]`, `Verse 1:` and `C1:`, so a section is not cut between columns.
+  Press **Esc** or click **Exit fit** to leave. The fit-view choice is
+  remembered in the browser. For very long songs that cannot fit even at the
+  8px minimum, the sheet scrolls inside the reading view instead of clipping
   text; columns still break on section markers where the song has them.
 
 ## Run it
@@ -154,10 +153,10 @@ uses only the standard library, so it needs no extra test dependency.
 
 ## Good to know
 
-- The **Wide** and **Fit to screen** controls need JavaScript. Their choices are
-  stored in the browser under `songtrove:wide` and `songtrove:fit`; no account or
-  server setting is involved. Printing always falls back to a single-column
-  chord sheet, even while Fit is active.
+- The **Fit to screen** control needs JavaScript. Its choice is stored in the
+  browser under `songtrove:fit`; no account or server setting is involved.
+  Printing always falls back to a single-column chord sheet, even while Fit is
+  active.
 - **Edit song** opens the song exactly as it appears: chords stay in place and
   `[ch]`/`[tab]` markup is hidden. Change any detail or the sheet itself, then
   save everything at once. Delete whole lines to remove filler. Lines you leave

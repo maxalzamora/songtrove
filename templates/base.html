@@ -7,13 +7,6 @@
   <meta name="description" content="Songtrove is a personal chord and lyric library with capo, performance ratings and fixed-width chord sheets.">
   <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <script>
-    try {
-      if (localStorage.getItem("songtrove:wide") === "1") {
-        document.documentElement.classList.add("is-wide");
-      }
-    } catch (error) {}
-  </script>
 </head>
 <body>
   <header class="site-header">
@@ -28,12 +21,6 @@
       <nav class="site-nav" aria-label="Main">
         {% if session.get('authenticated') %}
           <a href="{{ url_for('index') }}">Library</a>
-          <button type="button" class="wide-toggle" id="wide-toggle" aria-pressed="false" aria-label="Use the full window width" title="Toggle full-width layout">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/>
-            </svg>
-            <span>Wide</span>
-          </button>
           <a class="nav-add" href="{{ url_for('new_song') }}">Add song</a>
           <form class="nav-logout" method="post" action="{{ url_for('logout') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

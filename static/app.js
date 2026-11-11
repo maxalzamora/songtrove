@@ -1,26 +1,6 @@
 (() => {
   "use strict";
 
-  // ---- Full-width layout toggle ----
-  const WIDE_KEY = "songtrove:wide";
-  const wideToggle = document.getElementById("wide-toggle");
-  if (wideToggle) {
-    const applyWide = (on) => {
-      document.documentElement.classList.toggle("is-wide", on);
-      wideToggle.setAttribute("aria-pressed", String(on));
-    };
-
-    applyWide(document.documentElement.classList.contains("is-wide"));
-    wideToggle.addEventListener("click", () => {
-      const next = !document.documentElement.classList.contains("is-wide");
-      applyWide(next);
-      try {
-        localStorage.setItem(WIDE_KEY, next ? "1" : "0");
-      } catch (error) {}
-      window.dispatchEvent(new Event("songtrove:relayout"));
-    });
-  }
-
   // ---- Fit-to-screen column layout ----
   const fitToggle = document.getElementById("fit-toggle");
   const sheetScroll = document.getElementById("sheet-scroll");
@@ -28,7 +8,6 @@
   const sheetColumns = document.getElementById("sheet-columns");
   const fitLabel = document.getElementById("fit-label");
   const fitStatus = document.getElementById("fit-status");
-  const fitNote = document.getElementById("fit-note");
   const transposeHint = document.getElementById("transpose-hint");
 
   // ---- Capo transposition ----
@@ -465,7 +444,6 @@
         tallest > available.height + 1;
 
       sheetScroll.classList.toggle("is-overflowing", overflowing);
-      if (fitNote) fitNote.hidden = !overflowing;
       if (fitStatus) {
         fitStatus.textContent = `Fit view: ${ranges.length} column${
           ranges.length === 1 ? "" : "s"
@@ -520,7 +498,6 @@
       sheetSource.hidden = false;
       sheetColumns.replaceChildren();
       sheetScroll.classList.remove("is-overflowing");
-      if (fitNote) fitNote.hidden = true;
       if (fitStatus) fitStatus.textContent = "";
     };
 
@@ -549,7 +526,6 @@
     };
 
     window.addEventListener("resize", scheduleLayout);
-    window.addEventListener("songtrove:relayout", scheduleLayout);
 
     let startInFit = false;
     try {
