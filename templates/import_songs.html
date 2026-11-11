@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 
-{% block title %}Import songbook · Songbook{% endblock %}
+{% block title %}Import songs · Songtrove{% endblock %}
 
 {% block content %}
 <article class="edit-page song-form-page">
-  <a class="back-link" href="{{ url_for('index') }}">← Back to songbook</a>
+  <a class="back-link" href="{{ url_for('index') }}">← Back to library</a>
 
   <header class="edit-head">
     <p class="eyebrow">Restore</p>
-    <h1>Import songbook</h1>
+    <h1>Import songs</h1>
     <p class="edit-subtitle">
-      Upload a JSON file exported from this songbook. Imported songs are added
-      after the songs you already have.
+      Upload a JSON file exported from Songtrove. Imported songs are added after
+      the songs you already have.
     </p>
   </header>
 
@@ -26,11 +26,11 @@
     {% endif %}
 
     <div class="field">
-      <label for="songbook">Exported JSON file</label>
-      <input id="songbook" name="songbook" type="file" accept="application/json,.json" required>
+      <label for="backup">Songtrove JSON file</label>
+      <input id="backup" name="backup" type="file" accept="application/json,.json" required>
       <p class="field-help">
-        Make a backup with <strong>Export songbook</strong> in the footer. The
-        import keeps titles, artists, tunings, capos, ratings and chord sheets.
+        Make a backup with <strong>Export songs</strong> in the footer. The import
+        keeps titles, artists, tunings, capos, ratings and chord sheets.
       </p>
     </div>
 

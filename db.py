@@ -1,4 +1,4 @@
-"""SQLite storage for the songbook."""
+"""SQLite storage for Songtrove."""
 
 from __future__ import annotations
 

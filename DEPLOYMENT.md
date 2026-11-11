@@ -4,30 +4,28 @@ The app is a single-user Flask service with a password-protected login, CSRF
 protection, and SQLite storage. The `deploy/` files run it on a free
 PythonAnywhere account or a VPS; `render.yaml` deploys it from GitHub to Render.
 
-Do not commit `data/` or `.env`. The songbook database and password hash must
+Do not commit `data/` or `.env`. The Songtrove database and password hash must
 stay out of the repository.
 
 ## 1. Put the project on GitHub
 
-The project is already a Git repository with an initial commit on `main`. Create
-an empty **private** repository on GitHub, then connect it and push:
+The project is hosted at <https://github.com/maxalzamora/songtrove>. The `main`
+branch is the deployment branch. To connect a fresh clone to GitHub:
 
 ```bash
-cd /home/test_guitar
-git remote add origin git@github.com:YOUR-NAME/songbook.git
+git remote add origin git@github.com:maxalzamora/songtrove.git
 git push -u origin main
 ```
 
 Use the HTTPS URL instead if you authenticate with a personal access token:
 
 ```bash
-git remote add origin https://github.com/YOUR-NAME/songbook.git
+git remote add origin https://github.com/maxalzamora/songtrove.git
 git push -u origin main
 ```
 
-A private repository is recommended because chord sheets may contain
-copyrighted lyrics. Check that `git status` does not list `.env`, `data/`, or
-`.venv/` before committing. GitHub Actions runs the test suite on every push.
+Check that `git status` does not list `.env`, `data/`, or `.venv/` before
+committing. GitHub Actions runs the test suite on every push.
 
 ## 2. Set a password
 
@@ -42,11 +40,11 @@ python3 manage.py set-password
 python3 app.py
 ```
 
-Open <http://127.0.0.1:5000> and log in with the username `songbook` and the
+Open <http://127.0.0.1:5000> and log in with the username `songtrove` and the
 password you just chose.
 
 For a hosting dashboard, print a hash and paste it into the
-`SONGBOOK_PASSWORD_HASH` environment variable:
+`SONGTROVE_PASSWORD_HASH` environment variable:
 
 ```bash
 python3 manage.py hash-password
@@ -63,8 +61,8 @@ keeps SQLite on a persistent disk. It includes one Python web app at
 
 Free-plan limits: no custom domain, 512 MB of file storage, one web worker, a
 CPU allowance, and outbound internet access only to whitelisted hosts. The
-songbook does not need outbound internet, so those limits are fine for a
-personal library. GitHub updates are pulled manually; there is no automatic
+library does not need outbound internet, so those limits are fine for a
+personal collection. GitHub updates are pulled manually; there is no automatic
 deploy on every push.
 
 ### Create the account and install
@@ -80,27 +78,28 @@ Use that exact version when creating the web app below. Clone the repository:
 
 ```bash
 cd ~
-git clone https://github.com/maxalzamora/Songbook.git Songbook
+git clone https://github.com/maxalzamora/songtrove.git Songtrove
 ```
 
-If the repository is private, Git prompts for a username and password. Use your
-GitHub username and a **fine-grained personal access token** with read-only
-access to the repository's contents as the password. Do not put the token in
-the repository or in a shell profile.
+The repository is public, so the clone works without credentials. If you make
+it private later, Git prompts for a username and password. Use your GitHub
+username and a **fine-grained personal access token** with read-only access to
+the repository's contents as the password. Do not put the token in the
+repository or in a shell profile.
 
 Install the dependencies and create the local environment file:
 
 ```bash
-cd ~/Songbook
+cd ~/Songtrove
 python3 -m pip install --user -r requirements.txt
 python3 manage.py set-password
-sed -i 's/^SONGBOOK_SECURE_COOKIES=0/SONGBOOK_SECURE_COOKIES=1/' .env
+sed -i 's/^SONGTROVE_SECURE_COOKIES=0/SONGTROVE_SECURE_COOKIES=1/' .env
 ```
 
 The `set-password` command writes a hashed password and a `SECRET_KEY` to
 `.env`. The `sed` command makes the session cookie HTTPS-only. Confirm that
 `.env` contains the absolute database path for this account, for example
-`/home/USERNAME/Songbook/data/songbook.db`.
+`/home/USERNAME/Songtrove/data/songtrove.db`.
 
 ### Configure the web app
 
@@ -109,24 +108,24 @@ In the PythonAnywhere **Web** tab:
 1. Choose **Add a new web app**.
 2. Choose **Manual configuration** and select the same Python version you used
    above (for example Python 3.13).
-3. Set **Source code** and **Working directory** to `/home/USERNAME/Songbook`.
+3. Set **Source code** and **Working directory** to `/home/USERNAME/Songtrove`.
 4. Open the **WSGI configuration file** and replace its contents with
    `deploy/pythonanywhere_wsgi.py`. The file finds the repository at
-   `~/Songbook`.
+   `~/Songtrove`.
 5. Under **Static files**, add:
    - URL: `/static/`
-   - Directory: `/home/USERNAME/Songbook/static`
+   - Directory: `/home/USERNAME/Songtrove/static`
 6. Leave **Virtualenv** blank because the packages were installed with
    `--user`.
 7. Click **Reload**.
 
-Open `https://USERNAME.pythonanywhere.com`, log in with username `songbook`
+Open `https://USERNAME.pythonanywhere.com`, log in with username `songtrove`
 and the password you chose above.
 
 ### Move the existing songs
 
-In the local app, use **Export songbook** in the footer to download
-`songbook.json`. On the PythonAnywhere site, log in and open **Import songbook**
+In the local app, use **Export songs** in the footer to download
+`songtrove.json`. On the PythonAnywhere site, log in and open **Import songs**
 to upload that file. The import keeps titles, artists, tunings, capos, ratings
 and chord sheets.
 
@@ -135,7 +134,7 @@ and chord sheets.
 In the PythonAnywhere Bash console:
 
 ```bash
-cd ~/Songbook
+cd ~/Songtrove
 git pull
 python3 -m pip install --user -r requirements.txt
 ```
@@ -143,7 +142,7 @@ python3 -m pip install --user -r requirements.txt
 Then click **Reload** in the Web tab. The ignored `.env` and `data/` files are
 not touched by `git pull`, so the password and songs stay in place.
 
-## 4. Option A: Render from GitHub
+## 4. Option B: Render from GitHub
 
 The blueprint uses a paid Starter instance because Render persistent disks are
 not available on the free instance. Without a disk, the SQLite database is lost
@@ -151,25 +150,25 @@ on every redeploy.
 
 1. Push the repository to GitHub.
 2. In Render, choose **New → Blueprint** and connect the repository.
-3. Render reads `render.yaml` and asks for `SONGBOOK_PASSWORD_HASH`. Paste the
+3. Render reads `render.yaml` and asks for `SONGTROVE_PASSWORD_HASH`. Paste the
    hash from `python3 manage.py hash-password`.
 4. Apply the blueprint. Render builds the app, mounts a 1 GB disk at
-   `/var/data`, and stores the database at `/var/data/songbook.db`.
+   `/var/data`, and stores the database at `/var/data/songtrove.db`.
 5. Open the generated `https://…onrender.com` URL, log in, and add your songs.
 6. Add a custom domain in Render if you want one. HTTPS is automatic.
 
 Useful Render settings already in `render.yaml`:
 
 - `gunicorn --workers 1` — one worker avoids SQLite write contention.
-- `SONGBOOK_SECURE_COOKIES=1` — the session cookie is HTTPS-only.
+- `SONGTROVE_SECURE_COOKIES=1` — the session cookie is HTTPS-only.
 - `/healthz` — a public health check that verifies the database connection.
 - `SECRET_KEY` — generated by Render, so sessions survive restarts.
 
-To move an existing songbook to Render, use **Export songbook** in the local
-app's footer, then log in to the deployed app and open **Import songbook** to
-upload that JSON file. Keep a copy of the export outside the host as a backup.
+To move an existing library to Render, use **Export songs** in the local app's
+footer, then log in to the deployed app and open **Import songs** to upload that
+JSON file. Keep a copy of the export outside the host as a backup.
 
-## 5. Option B: VPS from GitHub
+## 5. Option C: VPS from GitHub
 
 These steps assume Ubuntu 24.04 or Debian 12, a domain whose DNS `A` record
 points at the server, and a non-root SSH user with `sudo`.
@@ -179,56 +178,56 @@ points at the server, and a non-root SSH user with `sudo`.
 ```bash
 sudo apt update
 sudo apt install -y python3 python3-venv python3-pip git caddy
-sudo useradd --system --create-home --home-dir /opt/songbook --shell /bin/bash songbook
-sudo mkdir -p /var/lib/songbook
-sudo chown songbook:songbook /var/lib/songbook
-sudo -u songbook git clone https://github.com/YOUR-NAME/songbook.git /opt/songbook/app
+sudo useradd --system --create-home --home-dir /opt/songtrove --shell /bin/bash songtrove
+sudo mkdir -p /var/lib/songtrove
+sudo chown songtrove:songtrove /var/lib/songtrove
+sudo -u songtrove git clone https://github.com/maxalzamora/songtrove.git /opt/songtrove/app
 ```
 
 ### Install dependencies
 
 ```bash
-cd /opt/songbook/app
-sudo -u songbook python3 -m venv .venv
-sudo -u songbook .venv/bin/pip install -r requirements.txt
+cd /opt/songtrove/app
+sudo -u songtrove python3 -m venv .venv
+sudo -u songtrove .venv/bin/pip install -r requirements.txt
 ```
 
-### Create `/etc/songbook.env`
+### Create `/etc/songtrove.env`
 
 Generate a secret and a password hash first:
 
 ```bash
 python3 -c 'import secrets; print(secrets.token_hex(32))'
-sudo -u songbook /opt/songbook/app/.venv/bin/python manage.py hash-password
+sudo -u songtrove /opt/songtrove/app/.venv/bin/python manage.py hash-password
 ```
 
-Create the environment file with `sudoedit /etc/songbook.env`:
+Create the environment file with `sudoedit /etc/songtrove.env`:
 
 ```ini
 SECRET_KEY=paste-the-generated-secret
-SONGBOOK_USERNAME=songbook
-SONGBOOK_PASSWORD_HASH=paste-the-generated-hash
-SONGBOOK_DB=/var/lib/songbook/songbook.db
-SONGBOOK_SECURE_COOKIES=1
+SONGTROVE_USERNAME=songtrove
+SONGTROVE_PASSWORD_HASH=paste-the-generated-hash
+SONGTROVE_DB=/var/lib/songtrove/songtrove.db
+SONGTROVE_SECURE_COOKIES=1
 ```
 
 Then protect it:
 
 ```bash
-sudo chown root:root /etc/songbook.env
-sudo chmod 600 /etc/songbook.env
+sudo chown root:root /etc/songtrove.env
+sudo chmod 600 /etc/songtrove.env
 ```
 
 ### Start Gunicorn and Caddy
 
 ```bash
-sudo cp deploy/songbook.service /etc/systemd/system/songbook.service
+sudo cp deploy/songtrove.service /etc/systemd/system/songtrove.service
 sudo systemctl daemon-reload
-sudo systemctl enable --now songbook
-sudo systemctl status songbook
+sudo systemctl enable --now songtrove
+sudo systemctl status songtrove
 ```
 
-Edit `deploy/Caddyfile` and replace `songbook.example.com` with your domain,
+Edit `deploy/Caddyfile` and replace `songtrove.example.com` with your domain,
 then install it:
 
 ```bash
@@ -248,20 +247,20 @@ sudo ufw allow 443/tcp
 sudo ufw enable
 ```
 
-### Copy the existing songbook database
+### Copy the existing library database
 
-From the computer that has the current `data/songbook.db`:
+From the computer that has the current `data/songtrove.db`:
 
 ```bash
-scp data/songbook.db your-user@your-server:/tmp/songbook.db
+scp data/songtrove.db your-user@your-server:/tmp/songtrove.db
 ```
 
 On the server:
 
 ```bash
-sudo install -o songbook -g songbook -m 600 /tmp/songbook.db /var/lib/songbook/songbook.db
-sudo rm /tmp/songbook.db
-sudo systemctl restart songbook
+sudo install -o songtrove -g songtrove -m 600 /tmp/songtrove.db /var/lib/songtrove/songtrove.db
+sudo rm /tmp/songtrove.db
+sudo systemctl restart songtrove
 ```
 
 The app migrates older schemas automatically and preserves the songs and IDs.
@@ -269,9 +268,9 @@ The app migrates older schemas automatically and preserves the songs and IDs.
 ### Update after pushing to GitHub
 
 ```bash
-sudo -u songbook git -C /opt/songbook/app pull --ff-only
-sudo -u songbook /opt/songbook/app/.venv/bin/pip install -r requirements.txt
-sudo systemctl restart songbook
+sudo -u songtrove git -C /opt/songtrove/app pull --ff-only
+sudo -u songtrove /opt/songtrove/app/.venv/bin/pip install -r requirements.txt
+sudo systemctl restart songtrove
 ```
 
 ## Backups
@@ -279,23 +278,23 @@ sudo systemctl restart songbook
 Back up the SQLite file while the app is running only if you accept a
 consistent-snapshot risk; safer options are:
 
-- Use **Export songbook** in the footer and store the JSON somewhere else. It
-  can be restored with **Import songbook** on any installation.
-- Stop the service, copy `/var/lib/songbook/songbook.db`, and start it again.
-- On a VPS, run a nightly `sqlite3 /var/lib/songbook/songbook.db ".backup
-  /var/backups/songbook-$(date +%F).db"` job and copy those files off the
+- Use **Export songs** in the footer and store the JSON somewhere else. It can
+  be restored with **Import songs** on any installation.
+- Stop the service, copy `/var/lib/songtrove/songtrove.db`, and start it again.
+- On a VPS, run a nightly `sqlite3 /var/lib/songtrove/songtrove.db ".backup
+  /var/backups/songtrove-$(date +%F).db"` job and copy those files off the
   server.
 
 The `data/` folder is deliberately ignored by git, so a `git push` is not a
-backup of the songbook.
+backup of the library.
 
 ## Security notes
 
 - Use a long, unique password and keep the repository private.
-- Keep `SECRET_KEY` and `SONGBOOK_PASSWORD_HASH` in the host's secret
+- Keep `SECRET_KEY` and `SONGTROVE_PASSWORD_HASH` in the host's secret
   environment, never in the repository.
 - The app uses one Gunicorn worker because SQLite is the database. If the
-  songbook grows into a multi-user service, move it to PostgreSQL and use
+  library grows into a multi-user service, move it to PostgreSQL and use
   multiple workers.
 - The login form is rate-limited only by a short failure delay. A private
   single-user site with a strong password is the intended use; if you need

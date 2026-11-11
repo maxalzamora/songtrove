@@ -1,4 +1,4 @@
-"""A small, self-hosted songbook for chords and lyrics."""
+"""A small, self-hosted guitar library for chords and lyrics."""
 
 from __future__ import annotations
 
@@ -42,14 +42,14 @@ def create_app(database_path: str | None = None) -> Flask:
     app.config.update(
         SECRET_KEY=_load_secret_key(),
         DATABASE=database_path
-        or os.environ.get("SONGBOOK_DB", str(DATA_DIR / "songbook.db")),
+        or os.environ.get("SONGTROVE_DB", str(DATA_DIR / "songtrove.db")),
         MAX_CONTENT_LENGTH=256 * 1024,
-        SONGBOOK_USERNAME=username,
-        SONGBOOK_PASSWORD_HASH=password_hash,
-        SESSION_COOKIE_NAME="songbook_session",
+        SONGTROVE_USERNAME=username,
+        SONGTROVE_PASSWORD_HASH=password_hash,
+        SESSION_COOKIE_NAME="songtrove_session",
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
-        SESSION_COOKIE_SECURE=_env_flag("SONGBOOK_SECURE_COOKIES"),
+        SESSION_COOKIE_SECURE=_env_flag("SONGTROVE_SECURE_COOKIES"),
         PERMANENT_SESSION_LIFETIME=timedelta(days=30),
         LOGIN_FAILURE_DELAY=0.4,
     )
@@ -112,10 +112,10 @@ def create_app(database_path: str | None = None) -> Flask:
             username = request.form.get("username", "").strip()
             password = request.form.get("password", "")
             valid_username = hmac.compare_digest(
-                username, app.config["SONGBOOK_USERNAME"]
+                username, app.config["SONGTROVE_USERNAME"]
             )
             valid_password = check_password_hash(
-                app.config["SONGBOOK_PASSWORD_HASH"], password
+                app.config["SONGTROVE_PASSWORD_HASH"], password
             )
             if valid_username and valid_password:
                 session.clear()
@@ -252,28 +252,28 @@ def create_app(database_path: str | None = None) -> Flask:
     def delete_song(song_id: int):
         song = db.get_song(song_id) or abort(404)
         db.delete_song(song_id)
-        flash(f"Removed “{song['title']}” from your songbook.", "info")
+        flash(f"Removed “{song['title']}” from your library.", "info")
         return redirect(url_for("index"))
 
     @app.get("/export")
-    def export_songbook():
+    def export_songs():
         songs = [dict(song) for song in db.list_songs("", "recent")]
         payload = json.dumps({"songs": songs}, indent=2, ensure_ascii=False)
         return Response(
             payload,
             mimetype="application/json",
             headers={
-                "Content-Disposition": 'attachment; filename="songbook.json"'
+                "Content-Disposition": 'attachment; filename="songtrove.json"'
             },
         )
 
     @app.route("/import", methods=["GET", "POST"])
-    def import_songbook():
+    def import_songs():
         errors = []
         if request.method == "POST":
-            upload = request.files.get("songbook")
+            upload = request.files.get("backup")
             if not upload or not upload.filename:
-                errors.append("Choose a JSON file exported from this songbook.")
+                errors.append("Choose a JSON file exported from this library.")
             else:
                 try:
                     payload = json.loads(upload.read().decode("utf-8"))
@@ -329,11 +329,11 @@ def create_app(database_path: str | None = None) -> Flask:
 
             if errors:
                 return (
-                    render_template("import_songbook.html", errors=errors),
+                    render_template("import_songs.html", errors=errors),
                     400,
                 )
 
-        return render_template("import_songbook.html", errors=[])
+        return render_template("import_songs.html", errors=[])
 
     @app.errorhandler(404)
     def not_found(_error):
@@ -445,11 +445,13 @@ def _load_secret_key() -> str:
 
 
 def _load_auth_config() -> tuple[str, str]:
-    username = os.environ.get("SONGBOOK_USERNAME", "songbook").strip() or "songbook"
-    password_hash = os.environ.get("SONGBOOK_PASSWORD_HASH", "").strip()
+    username = (
+        os.environ.get("SONGTROVE_USERNAME", "songtrove").strip() or "songtrove"
+    )
+    password_hash = os.environ.get("SONGTROVE_PASSWORD_HASH", "").strip()
     if not password_hash:
         raise RuntimeError(
-            "SONGBOOK_PASSWORD_HASH is not set. Run "
+            "SONGTROVE_PASSWORD_HASH is not set. Run "
             "`python3 manage.py set-password` for local use, or set the "
             "environment variable in your host's dashboard."
         )

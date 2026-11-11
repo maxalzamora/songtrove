@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create the password hash and local environment file for Songbook."""
+"""Create the password hash and local environment file for Songtrove."""
 
 from __future__ import annotations
 
@@ -49,20 +49,20 @@ def _set_password() -> None:
     password_hash = generate_password_hash(_prompt_password())
     existing = _read_env()
     values = {
-        "SONGBOOK_USERNAME": os.environ.get("SONGBOOK_USERNAME")
-        or existing.get("SONGBOOK_USERNAME")
-        or "songbook",
-        "SONGBOOK_PASSWORD_HASH": password_hash,
+        "SONGTROVE_USERNAME": os.environ.get("SONGTROVE_USERNAME")
+        or existing.get("SONGTROVE_USERNAME")
+        or "songtrove",
+        "SONGTROVE_PASSWORD_HASH": password_hash,
     }
     if not (os.environ.get("SECRET_KEY") or existing.get("SECRET_KEY")):
         values["SECRET_KEY"] = secrets.token_hex(32)
-    if not (os.environ.get("SONGBOOK_DB") or existing.get("SONGBOOK_DB")):
-        values["SONGBOOK_DB"] = str(BASE_DIR / "data" / "songbook.db")
+    if not (os.environ.get("SONGTROVE_DB") or existing.get("SONGTROVE_DB")):
+        values["SONGTROVE_DB"] = str(BASE_DIR / "data" / "songtrove.db")
     if not (
-        os.environ.get("SONGBOOK_SECURE_COOKIES")
-        or existing.get("SONGBOOK_SECURE_COOKIES")
+        os.environ.get("SONGTROVE_SECURE_COOKIES")
+        or existing.get("SONGTROVE_SECURE_COOKIES")
     ):
-        values["SONGBOOK_SECURE_COOKIES"] = "0"
+        values["SONGTROVE_SECURE_COOKIES"] = "0"
 
     _write_env(existing, values)
     print(f"Updated {ENV_PATH}")

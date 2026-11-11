@@ -16,10 +16,10 @@ from werkzeug.security import generate_password_hash
 
 # Keep the module-level Flask app created by ``app.py`` away from real data.
 _TEST_DB_DIR = tempfile.TemporaryDirectory()
-os.environ["SONGBOOK_DB"] = str(Path(_TEST_DB_DIR.name) / "app.db")
+os.environ["SONGTROVE_DB"] = str(Path(_TEST_DB_DIR.name) / "app.db")
 os.environ["SECRET_KEY"] = "test-secret-key"
-os.environ["SONGBOOK_USERNAME"] = "tester"
-os.environ["SONGBOOK_PASSWORD_HASH"] = generate_password_hash("test-password")
+os.environ["SONGTROVE_USERNAME"] = "tester"
+os.environ["SONGTROVE_PASSWORD_HASH"] = generate_password_hash("test-password")
 
 import db
 from app import create_app
@@ -193,7 +193,7 @@ Capo 3
 class AuthenticationTests(unittest.TestCase):
     def setUp(self):
         self.tempdir = tempfile.TemporaryDirectory()
-        self.database = str(Path(self.tempdir.name) / "songbook.db")
+        self.database = str(Path(self.tempdir.name) / "songtrove.db")
         self.app = create_app(self.database)
         self.app.config.update(
             TESTING=True, WTF_CSRF_ENABLED=False, LOGIN_FAILURE_DELAY=0
@@ -277,7 +277,7 @@ class AuthenticationTests(unittest.TestCase):
 class ManualSongTests(unittest.TestCase):
     def setUp(self):
         self.tempdir = tempfile.TemporaryDirectory()
-        self.database = str(Path(self.tempdir.name) / "songbook.db")
+        self.database = str(Path(self.tempdir.name) / "songtrove.db")
         self.app = create_app(self.database)
         self.app.config.update(
             TESTING=True, WTF_CSRF_ENABLED=False, LOGIN_FAILURE_DELAY=0
@@ -456,9 +456,9 @@ class ManualSongTests(unittest.TestCase):
         response = self.client.post(
             "/import",
             data={
-                "songbook": (
+                "backup": (
                     io.BytesIO(json.dumps(exported).encode("utf-8")),
-                    "songbook.json",
+                    "songtrove.json",
                 )
             },
             content_type="multipart/form-data",
@@ -480,7 +480,7 @@ class ManualSongTests(unittest.TestCase):
         response = self.client.post(
             "/import",
             data={
-                "songbook": (io.BytesIO(b"{not json"), "songbook.json"),
+                "backup": (io.BytesIO(b"{not json"), "songtrove.json"),
             },
             content_type="multipart/form-data",
         )
@@ -508,9 +508,9 @@ class ManualSongTests(unittest.TestCase):
         response = self.client.post(
             "/import",
             data={
-                "songbook": (
+                "backup": (
                     io.BytesIO(json.dumps(exported).encode("utf-8")),
-                    "songbook.json",
+                    "songtrove.json",
                 )
             },
             content_type="multipart/form-data",
@@ -528,13 +528,13 @@ class ManualSongTests(unittest.TestCase):
         page = response.get_data(as_text=True)
         self.assertIn('type="file"', page)
         self.assertIn('enctype="multipart/form-data"', page)
-        self.assertIn("Export songbook", page)
+        self.assertIn("Export songs", page)
 
 
 class EditSongTests(unittest.TestCase):
     def setUp(self):
         self.tempdir = tempfile.TemporaryDirectory()
-        self.database = str(Path(self.tempdir.name) / "songbook.db")
+        self.database = str(Path(self.tempdir.name) / "songtrove.db")
         self.app = create_app(self.database)
         self.app.config.update(
             TESTING=True, WTF_CSRF_ENABLED=False, LOGIN_FAILURE_DELAY=0

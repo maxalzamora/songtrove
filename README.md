@@ -1,9 +1,11 @@
-# Songbook
+# Songtrove
 
-A small, self-hosted songbook for guitar. Add a song by hand — title, artist,
-tuning, capo and the full chord/lyric sheet — and keep it in a local SQLite
-database. Each song gets a 1–5 star performance rating and a capo setting that
-transposes the displayed chord names.
+A self-hosted chord and lyric library for guitar. Add a song by hand — title,
+artist, tuning, capo and the full chord/lyric sheet — and keep it in a local
+SQLite database. Each song gets a 1–5 star performance rating and a capo setting
+that transposes the displayed chord names.
+
+Repository: <https://github.com/maxalzamora/songtrove>
 
 The chord sheet is rendered in a monospace font with all spacing preserved, so
 chords stay exactly above the syllables they belong to. The source text is
@@ -33,9 +35,9 @@ on the **Add song** page and stored locally.
   unwanted sections.
 - Search by title or artist; sort by recently added, title, artist or rating.
 - Stored locally in SQLite and available offline.
-- Password-protected access with CSRF protection, so the songbook can be
-  deployed publicly without exposing the library.
-- One-click JSON export of the whole songbook, plus an authenticated import page
+- Password-protected access with CSRF protection, so the library can be
+  deployed publicly without exposing it.
+- One-click JSON export of the whole library, plus an authenticated import page
   for restoring an export on another machine or host.
 - Responsive dark UI and a print stylesheet for paper chord sheets.
 - **Wide** button in the header for a full-window layout.
@@ -54,7 +56,8 @@ on the **Add song** page and stored locally.
 Requires Python 3.10+, Flask and Flask-WTF.
 
 ```bash
-cd /home/test_guitar
+git clone https://github.com/maxalzamora/songtrove.git
+cd songtrove
 python3 -m venv .venv
 . .venv/bin/activate
 pip install -r requirements.txt
@@ -64,7 +67,7 @@ python3 app.py
 
 `manage.py set-password` asks for a password and writes a hash to `.env`; the
 plain password is never stored. Then open <http://127.0.0.1:5000> and log in
-with username `songbook` (change `SONGBOOK_USERNAME` in `.env` if you want a
+with username `songtrove` (change `SONGTROVE_USERNAME` in `.env` if you want a
 different name).
 
 If you already have a `.env`, the app reads it automatically. To change the
@@ -87,21 +90,21 @@ setup in [DEPLOYMENT.md](DEPLOYMENT.md).
 | ------------------------- | ------------------------ | -------------------------------------------- |
 | `HOST`                    | `127.0.0.1`              | Address the dev server binds to              |
 | `PORT`                    | `5000`                   | Port                                         |
-| `SONGBOOK_DB`             | `data/songbook.db`       | SQLite database file                         |
+| `SONGTROVE_DB`             | `data/songtrove.db`       | SQLite database file                         |
 | `SECRET_KEY`              | generated in `data/`     | Flask session signing key                    |
-| `SONGBOOK_USERNAME`       | `songbook`               | Login username                               |
-| `SONGBOOK_PASSWORD_HASH`  | required                 | Password hash from `manage.py hash-password` |
-| `SONGBOOK_SECURE_COOKIES` | `0`                      | Set to `1` when serving over HTTPS           |
+| `SONGTROVE_USERNAME`       | `songtrove`               | Login username                               |
+| `SONGTROVE_PASSWORD_HASH`  | required                 | Password hash from `manage.py hash-password` |
+| `SONGTROVE_SECURE_COOKIES` | `0`                      | Set to `1` when serving over HTTPS           |
 | `FLASK_DEBUG`             | `0`                      | Set to `1` for debug/reload                  |
 
 ## Data and backup
 
-Everything lives in `data/songbook.db`. Copy that file to back up the songbook,
-or use the **Export songbook** link in the footer to download a JSON snapshot,
-then restore it through **Import songbook**. `data/` is ignored by git so
-personal data is not committed by accident.
+Everything lives in `data/songtrove.db`. Copy that file to back up the library,
+or use the **Export songs** link in the footer to download a JSON snapshot, then
+restore it through **Import songs**. `data/` is ignored by git so personal data
+is not committed by accident.
 
-The database initializer upgrades older songbook databases in place. Existing
+The database initializer upgrades older library databases in place. Existing
 songs, capo settings, ratings and IDs are preserved.
 
 ## Deployment
@@ -149,7 +152,7 @@ the in-place database upgrade. GitHub Actions runs the same suite on every push.
 ## Good to know
 
 - The **Wide** and **Fit to screen** controls need JavaScript. Their choices are
-  stored in the browser under `songbook:wide` and `songbook:fit`; no account or
+  stored in the browser under `songtrove:wide` and `songtrove:fit`; no account or
   server setting is involved. Printing always falls back to a single-column
   chord sheet, even while Fit is active.
 - **Edit song** opens the song exactly as it appears: chords stay in place and

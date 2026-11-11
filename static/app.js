@@ -2,7 +2,7 @@
   "use strict";
 
   // ---- Full-width layout toggle ----
-  const WIDE_KEY = "songbook:wide";
+  const WIDE_KEY = "songtrove:wide";
   const wideToggle = document.getElementById("wide-toggle");
   if (wideToggle) {
     const applyWide = (on) => {
@@ -17,7 +17,7 @@
       try {
         localStorage.setItem(WIDE_KEY, next ? "1" : "0");
       } catch (error) {}
-      window.dispatchEvent(new Event("songbook:relayout"));
+      window.dispatchEvent(new Event("songtrove:relayout"));
     });
   }
 
@@ -79,11 +79,11 @@
     if (transposeHint) {
       transposeHint.textContent = capo ? `Chords for capo ${capo}` : "Original chords";
     }
-    window.dispatchEvent(new Event("songbook:sheet-updated"));
+    window.dispatchEvent(new Event("songtrove:sheet-updated"));
   };
 
   if (fitToggle && sheetScroll && sheetSource && sheetColumns) {
-    const FIT_KEY = "songbook:fit";
+    const FIT_KEY = "songtrove:fit";
     const FIT_MIN = 8;
     const FIT_MAX = 18;
     const root = document.documentElement;
@@ -473,7 +473,7 @@
       }
     };
 
-    window.addEventListener("songbook:sheet-updated", () => {
+    window.addEventListener("songtrove:sheet-updated", () => {
       sourceHTML = sheetSource.innerHTML;
       lines = sourceHTML.split("\n");
       plainLines = lines.map((line) => {
@@ -549,7 +549,7 @@
     };
 
     window.addEventListener("resize", scheduleLayout);
-    window.addEventListener("songbook:relayout", scheduleLayout);
+    window.addEventListener("songtrove:relayout", scheduleLayout);
 
     let startInFit = false;
     try {

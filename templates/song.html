@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ song['title'] }} · Songbook{% endblock %}
+{% block title %}{{ song['title'] }} · Songtrove{% endblock %}
 
 {% block content %}
 <article class="song">
@@ -94,7 +94,7 @@
   </section>
 
   <div class="song-actions">
-    <form method="post" action="{{ url_for('delete_song', song_id=song['id']) }}" data-confirm="Remove “{{ song['title']|e }}” from your songbook?">
+    <form method="post" action="{{ url_for('delete_song', song_id=song['id']) }}" data-confirm="Remove “{{ song['title']|e }}” from your library?">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="btn btn-danger" type="submit">Delete song</button>
     </form>

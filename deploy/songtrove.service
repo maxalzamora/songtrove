@@ -1,24 +1,24 @@
 [Unit]
-Description=Songbook chord and lyric library
+Description=Songtrove chord and lyric library
 Wants=network-online.target
 After=network-online.target
 
 [Service]
 Type=simple
-User=songbook
-Group=songbook
-WorkingDirectory=/opt/songbook/app
-EnvironmentFile=/etc/songbook.env
+User=songtrove
+Group=songtrove
+WorkingDirectory=/opt/songtrove/app
+EnvironmentFile=/etc/songtrove.env
 Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/opt/songbook/app/.venv/bin/gunicorn --workers 1 --bind 127.0.0.1:8000 app:app
+ExecStart=/opt/songtrove/app/.venv/bin/gunicorn --workers 1 --bind 127.0.0.1:8000 app:app
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/songbook
+ReadWritePaths=/var/lib/songtrove
 UMask=0077
 
 [Install]

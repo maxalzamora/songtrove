@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% from "_macros.html" import static_stars %}
 
-{% block title %}Songbook{% endblock %}
+{% block title %}Songtrove{% endblock %}
 
 {% block content %}
 <section class="library-head">
   <div class="library-heading">
     <p class="eyebrow">Personal chord library</p>
-    <h1>Songbook</h1>
+    <h1>Songtrove</h1>
     <p class="lede">Pick a song from the list or add something new. Tuning, capo and ratings stay with each song.</p>
   </div>
   <a class="btn btn-primary" href="{{ url_for('new_song') }}">
@@ -16,9 +16,9 @@
   </a>
 </section>
 
-<section class="songbook" aria-labelledby="songbook-heading">
+<section class="library" aria-labelledby="library-heading">
   <div class="toolbar">
-    <h2 id="songbook-heading">All songs <span class="count">{{ total }}</span></h2>
+    <h2 id="library-heading">All songs <span class="count">{{ total }}</span></h2>
     <form class="filters" method="get" action="{{ url_for('index') }}" role="search">
       <input type="search" name="q" value="{{ query }}" placeholder="Search title or artist" aria-label="Search songs" autocomplete="off">
       <select name="sort" aria-label="Sort songs" onchange="this.form.submit()">
@@ -63,7 +63,7 @@
     </div>
   {% elif total == 0 %}
     <div class="empty-state">
-      <p class="empty-title">Your songbook is empty</p>
+      <p class="empty-title">Your library is empty</p>
       <p><a href="{{ url_for('new_song') }}">Add your first song</a> and it will show up here.</p>
     </div>
   {% else %}

@@ -1,13 +1,13 @@
 """WSGI entry point for a free PythonAnywhere web app.
 
-Clone the repository to ``~/Songbook`` and paste this file into the WSGI
+Clone the repository to ``~/Songtrove`` and paste this file into the WSGI
 configuration file shown in PythonAnywhere's Web tab.
 """
 
 import os
 import sys
 
-project_home = os.path.expanduser("~/Songbook")
+project_home = os.path.expanduser("~/Songtrove")
 if project_home not in sys.path:
     sys.path.insert(0, project_home)
 

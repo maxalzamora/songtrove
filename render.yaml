@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: songbook
+    name: songtrove
     runtime: python
     plan: starter
     buildCommand: pip install --upgrade pip && pip install -r requirements.txt
@@ -11,15 +11,15 @@ services:
         value: 3.12.6
       - key: SECRET_KEY
         generateValue: true
-      - key: SONGBOOK_USERNAME
-        value: songbook
-      - key: SONGBOOK_PASSWORD_HASH
+      - key: SONGTROVE_USERNAME
+        value: songtrove
+      - key: SONGTROVE_PASSWORD_HASH
         sync: false
-      - key: SONGBOOK_DB
-        value: /var/data/songbook.db
-      - key: SONGBOOK_SECURE_COOKIES
+      - key: SONGTROVE_DB
+        value: /var/data/songtrove.db
+      - key: SONGTROVE_SECURE_COOKIES
         value: "1"
     disk:
-      name: songbook-data
+      name: songtrove-data
       mountPath: /var/data
       sizeGB: 1
