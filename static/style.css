@@ -355,7 +355,8 @@ html.is-wide .footer-inner {
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   width: 100%;
   min-width: 0;
   padding: 0.7rem 0.85rem;
@@ -366,7 +367,14 @@ html.is-wide .footer-inner {
   font: 0.92rem var(--sans);
 }
 
-.field input::placeholder {
+.field textarea {
+  min-height: 6.5rem;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
   color: #667080;
 }
 
@@ -394,7 +402,8 @@ html.is-wide .footer-inner {
 }
 
 .field input:focus,
-.field select:focus {
+.field select:focus,
+.field textarea:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(231, 178, 90, 0.14);
@@ -415,6 +424,15 @@ html.is-wide .footer-inner {
 .field-capo,
 .field-rating {
   grid-column: span 3;
+}
+
+.field-tags,
+.field-source {
+  grid-column: span 6;
+}
+
+.field-notes {
+  grid-column: 1 / -1;
 }
 
 .field-sheet {
@@ -580,6 +598,16 @@ html.is-wide .footer-inner {
   font-size: 0.83rem;
 }
 
+.filter-clear {
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-decoration: none;
+}
+
+.filter-clear:hover {
+  color: var(--accent);
+}
+
 /* ---------- Song list ---------- */
 
 .song-list {
@@ -635,6 +663,22 @@ html.is-wide .footer-inner {
   line-height: 1.25;
   overflow-wrap: anywhere;
   transition: color 0.15s ease;
+}
+
+.song-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+  font-family: var(--sans);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+}
+
+.song-tag {
+  color: #7d8796;
 }
 
 .song-row:hover .song-title {
@@ -714,6 +758,29 @@ html.is-wide .footer-inner {
 
 .chip-quiet {
   opacity: 0.72;
+}
+
+.chip-tag,
+.chip-source {
+  text-decoration: none;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.chip-tag {
+  text-transform: none;
+  letter-spacing: 0.01em;
+}
+
+.chip-tag:hover,
+.chip-source:hover {
+  color: var(--accent);
+  border-color: rgba(231, 178, 90, 0.32);
+  background: var(--accent-soft);
+}
+
+.chip-source {
+  color: var(--accent);
+  border-color: rgba(231, 178, 90, 0.32);
 }
 
 .stars-static {
@@ -838,6 +905,31 @@ html.is-wide .footer-inner {
   gap: 0.45rem;
   flex-wrap: wrap;
   margin-top: 1rem;
+}
+
+.song-notes-block {
+  margin-top: 1.4rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.song-notes-block h2 {
+  margin: 0 0 0.4rem;
+  color: var(--muted);
+  font: 700 0.72rem var(--sans);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.song-notes {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.92rem;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
 }
 
 /* ---------- Capo + performance controls ---------- */
@@ -1401,7 +1493,10 @@ html.fit-mode .sheet-scroll.is-overflowing {
   .field-artist,
   .field-tuning,
   .field-capo,
-  .field-rating {
+  .field-rating,
+  .field-tags,
+  .field-source,
+  .field-notes {
     grid-column: 1 / -1;
   }
 

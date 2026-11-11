@@ -145,12 +145,32 @@ def create_app(database_path: str | None = None) -> Flask:
         sort = request.args.get("sort", "recent")
         if sort not in db.SORT_ORDERS:
             sort = "recent"
+
+        available_tags = db.list_tags()
+        tag = request.args.get("tag", "").strip().lstrip("#").casefold()
+
+        rating = request.args.get("rating", "").strip()
+        if rating not in {"", "0", "3", "4", "5"}:
+            rating = ""
+
+        available_tunings = db.list_tunings()
+        tuning = request.args.get("tuning", "").strip()
+
+        songs = db.list_songs(
+            query, sort, tag=tag, rating=rating, tuning=tuning
+        )
         return render_template(
             "index.html",
-            songs=db.list_songs(query, sort),
+            songs=songs,
             total=db.count_songs(),
             query=query,
             sort=sort,
+            tag=tag,
+            rating=rating,
+            tuning=tuning,
+            tags=available_tags,
+            tunings=available_tunings,
+            has_filters=bool(query or tag or rating or tuning),
         )
 
     @app.route("/songs/new", methods=["GET", "POST"])
@@ -170,6 +190,9 @@ def create_app(database_path: str | None = None) -> Flask:
                 title=form["title"],
                 artist=form["artist"],
                 content=form["content"],
+                notes=form["notes"],
+                source_url=_normalize_source_url(form["source_url"])[0],
+                tags=form["tags"],
                 tuning=form["tuning"],
                 capo=form["capo"],
                 rating=form["rating"],
@@ -219,6 +242,9 @@ def create_app(database_path: str | None = None) -> Flask:
             title=form["title"],
             artist=form["artist"],
             content=merge_edited_text(song["content"], form["content"]),
+            notes=form["notes"],
+            source_url=_normalize_source_url(form["source_url"])[0],
+            tags=form["tags"],
             tuning=form["tuning"],
             capo=form["capo"],
             rating=form["rating"],
@@ -303,11 +329,39 @@ def create_app(database_path: str | None = None) -> Flask:
                                     f"Song {index} needs a title, artist and sheet."
                                 )
                                 continue
+                            notes = (
+                                str(item.get("notes") or "")
+                                .replace("\r\n", "\n")
+                                .replace("\r", "\n")
+                                .strip()
+                            )
+                            if len(notes) > 5000:
+                                errors.append(
+                                    f"Song {index} has notes that are too long."
+                                )
+                                continue
+                            source_url, source_error = _normalize_source_url(
+                                item.get("source_url") or ""
+                            )
+                            if source_error:
+                                errors.append(
+                                    f"Song {index} has an invalid source URL."
+                                )
+                                continue
+                            tags = db.normalize_tags(item.get("tags") or "")
+                            if len(tags) > 300:
+                                errors.append(
+                                    f"Song {index} has too many tags."
+                                )
+                                continue
                             imported.append(
                                 {
                                     "title": title,
                                     "artist": artist,
                                     "content": content,
+                                    "notes": notes,
+                                    "source_url": source_url,
+                                    "tags": tags,
                                     "tuning": str(
                                         item.get("tuning") or db.DEFAULT_TUNING
                                     ).strip()
@@ -374,6 +428,10 @@ def create_app(database_path: str | None = None) -> Flask:
             return "Standard"
         return tuning
 
+    @app.template_filter("tag_list")
+    def tag_list(value) -> list[str]:
+        return db.parse_tags(value)
+
     return app
 
 
@@ -384,6 +442,9 @@ def _empty_song_form() -> dict[str, str | int]:
         "tuning": db.DEFAULT_TUNING,
         "capo": 0,
         "rating": 0,
+        "notes": "",
+        "source_url": "",
+        "tags": "",
         "content": "",
     }
 
@@ -395,6 +456,9 @@ def _song_form_from_song(song) -> dict[str, str | int]:
         "tuning": song["tuning"] or db.DEFAULT_TUNING,
         "capo": song["capo"],
         "rating": song["rating"],
+        "notes": song["notes"] or "",
+        "source_url": song["source_url"] or "",
+        "tags": " ".join(f"#{tag}" for tag in db.parse_tags(song["tags"])),
         "content": plain_sheet_text(song["content"]),
     }
 
@@ -402,12 +466,17 @@ def _song_form_from_song(song) -> dict[str, str | int]:
 def _song_form_from_request() -> dict[str, str | int]:
     content = request.form.get("content", "")
     content = content.replace("\r\n", "\n").replace("\r", "\n")
+    notes = request.form.get("notes", "")
+    notes = notes.replace("\r\n", "\n").replace("\r", "\n")
     return {
         "title": request.form.get("title", "").strip(),
         "artist": request.form.get("artist", "").strip(),
         "tuning": request.form.get("tuning", "").strip() or db.DEFAULT_TUNING,
         "capo": _clamp(request.form.get("capo"), 0, 12, 0),
         "rating": _clamp(request.form.get("rating"), 0, 5, 0),
+        "notes": notes,
+        "source_url": request.form.get("source_url", "").strip(),
+        "tags": request.form.get("tags", "").strip(),
         "content": content,
     }
 
@@ -420,7 +489,44 @@ def _song_form_errors(form: dict[str, str | int]) -> list[str]:
         errors.append("Add an artist.")
     if not str(form["content"]).strip():
         errors.append("Add the chords or lyrics.")
+    if len(str(form["notes"])) > 5000:
+        errors.append("Keep notes under 5,000 characters.")
+    if len(str(form["source_url"])) > 500:
+        errors.append("Keep the source URL under 500 characters.")
+    if len(str(form["tags"])) > 300:
+        errors.append("Keep tags under 300 characters.")
+    _, source_error = _normalize_source_url(form["source_url"])
+    if source_error:
+        errors.append(source_error)
     return errors
+
+
+def _normalize_source_url(value) -> tuple[str, str | None]:
+    raw = str(value or "").strip()
+    if not raw:
+        return "", None
+
+    if "://" in raw:
+        candidate = raw
+    else:
+        if ":" in raw.split("/", 1)[0]:
+            return raw, "Add a valid http:// or https:// source URL."
+        candidate = f"https://{raw}"
+
+    if any(character.isspace() for character in candidate):
+        return raw, "Use a source URL without spaces."
+    try:
+        parsed = urlsplit(candidate)
+        parsed.port
+    except ValueError:
+        return raw, "Add a valid http:// or https:// source URL."
+    if (
+        parsed.scheme.lower() not in {"http", "https"}
+        or not parsed.hostname
+        or not parsed.netloc
+    ):
+        return raw, "Add a valid http:// or https:// source URL."
+    return candidate, None
 
 
 def _load_secret_key() -> str:

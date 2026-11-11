@@ -9,7 +9,7 @@
   <header class="edit-head">
     <p class="eyebrow">Edit song</p>
     <h1>{{ song['title'] }}</h1>
-    <p class="edit-subtitle">Change the details, tuning, capo, rating or chord sheet.</p>
+    <p class="edit-subtitle">Change the details, tuning, capo, rating, tags, notes or chord sheet.</p>
   </header>
 
   <form class="song-form" method="post" action="{{ url_for('save_song', song_id=song['id']) }}">

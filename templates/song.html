@@ -21,9 +21,22 @@
     <div class="chips">
       <span class="chip chip-accent">{{ 'Capo ' ~ song['capo'] if song['capo'] else 'No capo' }}</span>
       <span class="chip">{{ song['tuning']|tuning_label }}</span>
+      {% for tag in song['tags']|tag_list %}
+        <a class="chip chip-tag" href="{{ url_for('index', tag=tag) }}">#{{ tag }}</a>
+      {% endfor %}
+      {% if song['source_url'] %}
+        <a class="chip chip-source" href="{{ song['source_url'] }}" target="_blank" rel="noopener noreferrer">Source ↗</a>
+      {% endif %}
       <span class="chip chip-quiet">Added {{ song['created_at']|pretty_date }}</span>
     </div>
   </header>
+
+  {% if song['notes'] %}
+    <section class="song-notes-block" aria-labelledby="notes-heading">
+      <h2 id="notes-heading">Notes</h2>
+      <p class="song-notes">{{ song['notes'] }}</p>
+    </section>
+  {% endif %}
 
   <section class="settings" aria-label="Song settings">
     <form id="settings-form" class="settings-form" method="post" action="{{ url_for('update_song', song_id=song['id']) }}">

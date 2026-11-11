@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,6 +17,9 @@ CREATE TABLE IF NOT EXISTS songs (
     title      TEXT    NOT NULL,
     artist     TEXT    NOT NULL,
     content    TEXT    NOT NULL,
+    notes      TEXT    NOT NULL DEFAULT '',
+    source_url TEXT    NOT NULL DEFAULT '',
+    tags       TEXT    NOT NULL DEFAULT '',
     tuning     TEXT    NOT NULL DEFAULT '{DEFAULT_TUNING}',
     capo       INTEGER NOT NULL DEFAULT 0,
     rating     INTEGER NOT NULL DEFAULT 0,
@@ -30,6 +34,9 @@ TARGET_COLUMNS = frozenset(
         "title",
         "artist",
         "content",
+        "notes",
+        "source_url",
+        "tags",
         "tuning",
         "capo",
         "rating",
@@ -50,6 +57,30 @@ SORT_ORDERS = {
     "artist": "artist COLLATE NOCASE ASC, title COLLATE NOCASE ASC",
     "rating": "rating DESC, title COLLATE NOCASE ASC",
 }
+
+TAG_SPLIT = re.compile(r"[,\s]+")
+
+
+def parse_tags(value) -> list[str]:
+    """Return clean, lower-case tags from text or a list of tags."""
+    if isinstance(value, (list, tuple, set)):
+        raw = " ".join(str(item) for item in value)
+    else:
+        raw = str(value or "")
+
+    tags = []
+    seen = set()
+    for token in TAG_SPLIT.split(raw):
+        tag = token.strip().lstrip("#").casefold()
+        if tag and tag not in seen:
+            seen.add(tag)
+            tags.append(tag)
+    return tags
+
+
+def normalize_tags(value) -> str:
+    """Store tags in one canonical, comma-separated form."""
+    return ",".join(parse_tags(value))
 
 
 def init_app(app) -> None:
@@ -81,21 +112,70 @@ def close_db(_error=None) -> None:
         database.close()
 
 
-def list_songs(query: str = "", sort: str = "recent") -> list[sqlite3.Row]:
+def list_songs(
+    query: str = "",
+    sort: str = "recent",
+    *,
+    tag: str = "",
+    rating: str = "",
+    tuning: str = "",
+) -> list[sqlite3.Row]:
     order = SORT_ORDERS.get(sort, SORT_ORDERS["recent"])
     database = get_db()
-    query = (query or "").strip()
+    query = str(query or "").strip()
+    clauses = []
+    parameters: list[str | int] = []
+
     if query:
-        like = f"%{query}%"
-        rows = database.execute(
-            f"""SELECT * FROM songs
-                WHERE title LIKE ? OR artist LIKE ?
-                ORDER BY {order}""",
-            (like, like),
+        search_query = (
+            query[1:] if query.startswith("#") and len(query) > 1 else query
         )
-    else:
-        rows = database.execute(f"SELECT * FROM songs ORDER BY {order}")
+        like = f"%{search_query}%"
+        clauses.append(
+            "(title LIKE ? OR artist LIKE ? OR notes LIKE ? OR tags LIKE ?)"
+        )
+        parameters.extend([like, like, like, like])
+
+    tag = str(tag or "").strip().lstrip("#").casefold()
+    if tag:
+        clauses.append("instr(',' || tags || ',', ?) > 0")
+        parameters.append(f",{tag},")
+
+    rating = str(rating or "").strip()
+    if rating == "0":
+        clauses.append("rating = 0")
+    elif rating in {"3", "4", "5"}:
+        clauses.append("rating >= ?")
+        parameters.append(int(rating))
+
+    tuning = str(tuning or "").strip()
+    if tuning:
+        clauses.append("tuning = ?")
+        parameters.append(tuning)
+
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    rows = database.execute(
+        f"SELECT * FROM songs {where} ORDER BY {order}", parameters
+    )
     return rows.fetchall()
+
+
+def list_tags() -> list[str]:
+    tags = set()
+    for row in get_db().execute(
+        "SELECT tags FROM songs WHERE TRIM(tags) <> ''"
+    ).fetchall():
+        tags.update(parse_tags(row["tags"]))
+    return sorted(tags)
+
+
+def list_tunings() -> list[str]:
+    rows = get_db().execute(
+        """SELECT DISTINCT tuning FROM songs
+            WHERE TRIM(COALESCE(tuning, '')) <> ''
+            ORDER BY tuning COLLATE NOCASE ASC"""
+    ).fetchall()
+    return [row["tuning"] for row in rows]
 
 
 def count_songs() -> int:
@@ -112,6 +192,9 @@ def add_manual_song(
     title: str,
     artist: str,
     content: str,
+    notes: str = "",
+    source_url: str = "",
+    tags: str = "",
     tuning: str = DEFAULT_TUNING,
     capo: int = 0,
     rating: int = 0,
@@ -121,10 +204,22 @@ def add_manual_song(
     database = get_db()
     cursor = database.execute(
         """INSERT INTO songs
-               (title, artist, content, tuning, capo, rating,
-                created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (title, artist, content, tuning, capo, rating, now, now),
+               (title, artist, content, notes, source_url, tags, tuning, capo,
+                rating, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            title,
+            artist,
+            content,
+            notes,
+            source_url,
+            normalize_tags(tags),
+            tuning,
+            capo,
+            rating,
+            now,
+            now,
+        ),
     )
     database.commit()
     return int(cursor.lastrowid)
@@ -159,6 +254,9 @@ def update_song(
     title: str,
     artist: str,
     content: str,
+    notes: str = "",
+    source_url: str = "",
+    tags: str = "",
     tuning: str,
     capo: int,
     rating: int,
@@ -167,10 +265,23 @@ def update_song(
     database = get_db()
     database.execute(
         """UPDATE songs
-              SET title = ?, artist = ?, content = ?, tuning = ?,
-                  capo = ?, rating = ?, updated_at = ?
+              SET title = ?, artist = ?, content = ?, notes = ?,
+                  source_url = ?, tags = ?, tuning = ?, capo = ?,
+                  rating = ?, updated_at = ?
             WHERE id = ?""",
-        (title, artist, content, tuning, capo, rating, _now(), song_id),
+        (
+            title,
+            artist,
+            content,
+            notes,
+            source_url,
+            normalize_tags(tags),
+            tuning,
+            capo,
+            rating,
+            _now(),
+            song_id,
+        ),
     )
     database.commit()
 
@@ -194,15 +305,27 @@ def _migrate_schema(database: sqlite3.Connection) -> None:
         database.execute("ALTER TABLE songs RENAME TO songs_legacy")
         database.execute("DROP INDEX IF EXISTS idx_songs_created")
         database.execute(SONGS_TABLE)
+
+        def text_column(name: str) -> str:
+            return f"COALESCE({name}, '')" if name in columns else "''"
+
+        if "tuning" in columns:
+            tuning_expression = (
+                "CASE WHEN TRIM(COALESCE(tuning, '')) = '' "
+                "THEN ? ELSE tuning END"
+            )
+        else:
+            tuning_expression = "?"
+
         database.execute(
-            """INSERT INTO songs
-                   (id, title, artist, content, tuning, capo, rating,
-                    created_at, updated_at)
+            f"""INSERT INTO songs
+                   (id, title, artist, content, notes, source_url, tags,
+                    tuning, capo, rating, created_at, updated_at)
                SELECT id, title, artist, content,
-                      CASE
-                          WHEN TRIM(COALESCE(tuning, '')) = '' THEN ?
-                          ELSE tuning
-                      END,
+                      {text_column('notes')},
+                      {text_column('source_url')},
+                      {text_column('tags')},
+                      {tuning_expression},
                       capo, rating, created_at, updated_at
                  FROM songs_legacy""",
             (DEFAULT_TUNING,),

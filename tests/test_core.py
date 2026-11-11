@@ -56,6 +56,21 @@ CREATE TABLE songs (
 CREATE INDEX idx_songs_created ON songs (created_at DESC);
 """
 
+PRE_NOTES_SCHEMA = """
+CREATE TABLE songs (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    title      TEXT    NOT NULL,
+    artist     TEXT    NOT NULL,
+    content    TEXT    NOT NULL,
+    tuning     TEXT    NOT NULL DEFAULT 'E A D G B E',
+    capo       INTEGER NOT NULL DEFAULT 0,
+    rating     INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT    NOT NULL,
+    updated_at TEXT    NOT NULL
+);
+CREATE INDEX idx_songs_created ON songs (created_at DESC);
+"""
+
 
 def visible_text(fragment: str) -> str:
     return html.unescape(re.sub(r"<[^>]+>", "", fragment))
@@ -301,6 +316,9 @@ class ManualSongTests(unittest.TestCase):
         self.assertIn('value="E A D G B E"', page)
         self.assertIn('name="capo"', page)
         self.assertIn('name="rating"', page)
+        self.assertIn('name="notes"', page)
+        self.assertIn('name="source_url"', page)
+        self.assertIn('name="tags"', page)
         self.assertNotIn('name="tab_type"', page)
         self.assertNotIn('name="song_key"', page)
 
@@ -313,6 +331,9 @@ class ManualSongTests(unittest.TestCase):
                 "tuning": "Drop D",
                 "capo": "3",
                 "rating": "4",
+                "notes": "Play the bridge softly.\nSecond pass louder.",
+                "source_url": "example.com/manual-song",
+                "tags": "#Folk, #ballad folk",
                 "content": "[Verse]\nG   D\nLyrics here",
             },
         )
@@ -328,6 +349,9 @@ class ManualSongTests(unittest.TestCase):
             self.assertEqual(song["tuning"], "Drop D")
             self.assertEqual(song["capo"], 3)
             self.assertEqual(song["rating"], 4)
+            self.assertEqual(song["notes"], "Play the bridge softly.\nSecond pass louder.")
+            self.assertEqual(song["source_url"], "https://example.com/manual-song")
+            self.assertEqual(song["tags"], "folk,ballad")
             self.assertEqual(song["content"], "[Verse]\nG   D\nLyrics here")
             self.assertEqual(set(song.keys()), db.TARGET_COLUMNS)
 
@@ -336,6 +360,11 @@ class ManualSongTests(unittest.TestCase):
         self.assertIn("Lyrics here", page)
         self.assertIn("Edit song", page)
         self.assertIn('href="/song/1/edit"', page)
+        self.assertIn("Play the bridge softly.", page)
+        self.assertIn('href="https://example.com/manual-song"', page)
+        self.assertIn('href="/?tag=folk"', page)
+        self.assertIn("#ballad", page)
+        self.assertIn("#folk", page)
 
     def test_blank_tuning_defaults_to_standard(self):
         self.client.post(
@@ -388,6 +417,24 @@ class ManualSongTests(unittest.TestCase):
             self.assertEqual(song["capo"], 12)
             self.assertEqual(song["rating"], 0)
 
+    def test_rejects_an_invalid_source_url(self):
+        for source_url in ("javascript:alert(1)", "ftp://example.com/song", "not a url"):
+            response = self.client.post(
+                "/songs/new",
+                data={
+                    "title": "Bad Source",
+                    "artist": "A Player",
+                    "source_url": source_url,
+                    "content": "G",
+                },
+            )
+
+            self.assertEqual(response.status_code, 400)
+            self.assertIn("source URL", response.get_data(as_text=True))
+
+        with self.app.app_context():
+            self.assertEqual(db.count_songs(), 0)
+
     def test_index_uses_a_compact_song_list(self):
         self.client.post(
             "/songs/new",
@@ -424,12 +471,20 @@ class ManualSongTests(unittest.TestCase):
                 "title": "Export Song",
                 "artist": "A Player",
                 "content": "G",
+                "notes": "Export notes",
+                "source_url": "https://example.com/export",
+                "tags": "#folk #live",
             },
         )
 
         payload = json.loads(self.client.get("/export").get_data(as_text=True))
         self.assertEqual(len(payload["songs"]), 1)
         self.assertEqual(set(payload["songs"][0]), db.TARGET_COLUMNS)
+        self.assertEqual(payload["songs"][0]["notes"], "Export notes")
+        self.assertEqual(
+            payload["songs"][0]["source_url"], "https://example.com/export"
+        )
+        self.assertEqual(payload["songs"][0]["tags"], "folk,live")
 
     def test_import_adds_songs_from_an_export(self):
         exported = {
@@ -441,6 +496,9 @@ class ManualSongTests(unittest.TestCase):
                     "tuning": "Drop D",
                     "capo": 2,
                     "rating": 5,
+                    "notes": "Capo stays on through the chorus.",
+                    "source_url": "https://example.com/imported",
+                    "tags": ["Folk", "#ballad"],
                     "id": 99,
                 },
                 {
@@ -473,8 +531,14 @@ class ManualSongTests(unittest.TestCase):
             self.assertEqual(song["tuning"], "Drop D")
             self.assertEqual(song["capo"], 2)
             self.assertEqual(song["rating"], 5)
+            self.assertEqual(song["notes"], "Capo stays on through the chorus.")
+            self.assertEqual(song["source_url"], "https://example.com/imported")
+            self.assertEqual(song["tags"], "folk,ballad")
             self.assertEqual(song["content"], "[Verse]\nG\nWords")
             self.assertEqual(db.get_song(2)["tuning"], db.DEFAULT_TUNING)
+            self.assertEqual(db.get_song(2)["notes"], "")
+            self.assertEqual(db.get_song(2)["source_url"], "")
+            self.assertEqual(db.get_song(2)["tags"], "")
 
     def test_import_rejects_invalid_json_without_writing(self):
         response = self.client.post(
@@ -521,6 +585,33 @@ class ManualSongTests(unittest.TestCase):
         with self.app.app_context():
             self.assertEqual(db.count_songs(), 0)
 
+    def test_import_rejects_an_invalid_source_url_without_writing(self):
+        exported = {
+            "songs": [
+                {
+                    "title": "Good Song",
+                    "artist": "Artist",
+                    "content": "G",
+                    "source_url": "javascript:alert(1)",
+                }
+            ]
+        }
+        response = self.client.post(
+            "/import",
+            data={
+                "backup": (
+                    io.BytesIO(json.dumps(exported).encode("utf-8")),
+                    "songtrove.json",
+                )
+            },
+            content_type="multipart/form-data",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("invalid source URL", response.get_data(as_text=True))
+        with self.app.app_context():
+            self.assertEqual(db.count_songs(), 0)
+
     def test_import_page_explains_the_backup_format(self):
         response = self.client.get("/import")
 
@@ -529,6 +620,109 @@ class ManualSongTests(unittest.TestCase):
         self.assertIn('type="file"', page)
         self.assertIn('enctype="multipart/form-data"', page)
         self.assertIn("Export songs", page)
+
+
+class IndexFilterTests(unittest.TestCase):
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.database = str(Path(self.tempdir.name) / "songtrove.db")
+        self.app = create_app(self.database)
+        self.app.config.update(
+            TESTING=True, WTF_CSRF_ENABLED=False, LOGIN_FAILURE_DELAY=0
+        )
+        self.client = self.app.test_client()
+        log_in(self.client)
+        with self.app.app_context():
+            db.add_manual_song(
+                title="Folk Song",
+                artist="Folk Artist",
+                notes="Play gently and let the last chord ring.",
+                tags="folk,ballad",
+                content="G",
+                rating=5,
+            )
+            db.add_manual_song(
+                title="Rock Song",
+                artist="Rock Artist",
+                notes="Loud and fast.",
+                tags="rock",
+                tuning="Drop D",
+                content="D",
+                rating=3,
+            )
+            db.add_manual_song(
+                title="Untagged Song",
+                artist="Quiet Artist",
+                tuning="D A D G B E",
+                content="C",
+                rating=0,
+            )
+
+    def tearDown(self):
+        self.tempdir.cleanup()
+
+    def _page(self, path: str) -> str:
+        response = self.client.get(path)
+        self.assertEqual(response.status_code, 200)
+        return response.get_data(as_text=True)
+
+    def test_search_matches_title_artist_tags_and_notes(self):
+        self.assertIn("Folk Song", self._page("/?q=ballad"))
+        self.assertIn("Folk Song", self._page("/?q=%23ballad"))
+        self.assertIn("Folk Song", self._page("/?q=gently"))
+        self.assertIn("Rock Song", self._page("/?q=rock"))
+
+        page = self._page("/?q=ballad")
+        self.assertNotIn("Rock Song", page)
+        self.assertNotIn("Untagged Song", page)
+
+    def test_filters_by_tag_rating_and_tuning(self):
+        page = self._page("/?tag=folk")
+        self.assertIn("Folk Song", page)
+        self.assertNotIn("Rock Song", page)
+        self.assertNotIn("Untagged Song", page)
+        self.assertIn("1 of 3", page)
+
+        page = self._page("/?rating=4")
+        self.assertIn("Folk Song", page)
+        self.assertNotIn("Rock Song", page)
+        self.assertNotIn("Untagged Song", page)
+
+        page = self._page("/?rating=3")
+        self.assertIn("Folk Song", page)
+        self.assertIn("Rock Song", page)
+        self.assertNotIn("Untagged Song", page)
+
+        page = self._page("/?rating=0")
+        self.assertIn("Untagged Song", page)
+        self.assertNotIn("Folk Song", page)
+        self.assertNotIn("Rock Song", page)
+
+        page = self._page("/?tuning=Drop+D")
+        self.assertIn("Rock Song", page)
+        self.assertNotIn("Folk Song", page)
+
+    def test_filters_combine_and_show_clear_control(self):
+        page = self._page("/?tag=folk&rating=4")
+        self.assertIn("Folk Song", page)
+        self.assertNotIn("Rock Song", page)
+        self.assertIn('name="tag"', page)
+        self.assertIn('name="rating"', page)
+        self.assertIn('name="tuning"', page)
+        self.assertIn('<option value="folk" selected>#folk</option>', page)
+        self.assertIn("Clear", page)
+
+    def test_empty_filter_results_explain_how_to_reset(self):
+        page = self._page("/?q=does-not-exist")
+        self.assertIn("No songs match these filters", page)
+        self.assertIn("Clear the filters", page)
+        self.assertIn("3 songs", page)
+
+    def test_unknown_tag_filter_is_preserved_and_matches_nothing(self):
+        page = self._page("/?tag=missing")
+        self.assertIn("No songs match these filters", page)
+        self.assertIn('<option value="missing" selected>#missing</option>', page)
+        self.assertNotIn("Folk Song", page)
 
 
 class EditSongTests(unittest.TestCase):
@@ -548,6 +742,9 @@ class EditSongTests(unittest.TestCase):
                 tuning="E A D G B E",
                 capo=1,
                 rating=3,
+                notes="Original notes",
+                source_url="https://example.com/original",
+                tags="folk,ballad",
                 content="[Verse]\n[ch]G[/ch]\nOld words",
             )
 
@@ -569,6 +766,12 @@ class EditSongTests(unittest.TestCase):
         self.assertIn('value="1"', page)
         self.assertIn('name="rating"', page)
         self.assertIn("<option value=\"3\" selected>3 stars</option>", page)
+        self.assertIn('name="notes"', page)
+        self.assertIn("Original notes", page)
+        self.assertIn('name="source_url"', page)
+        self.assertIn('value="https://example.com/original"', page)
+        self.assertIn('name="tags"', page)
+        self.assertIn('value="#folk #ballad"', page)
         self.assertIn("G\nOld words", page)
         self.assertNotIn("[ch]G[/ch]", page)
 
@@ -581,6 +784,9 @@ class EditSongTests(unittest.TestCase):
                 "tuning": "Drop D",
                 "capo": "2",
                 "rating": "5",
+                "notes": "New notes\nWith a second line.",
+                "source_url": "https://example.com/updated",
+                "tags": "#Rock, #live",
                 "content": "[Verse]\nG\nNew words",
             },
         )
@@ -596,6 +802,9 @@ class EditSongTests(unittest.TestCase):
             self.assertEqual(song["tuning"], "Drop D")
             self.assertEqual(song["capo"], 2)
             self.assertEqual(song["rating"], 5)
+            self.assertEqual(song["notes"], "New notes\nWith a second line.")
+            self.assertEqual(song["source_url"], "https://example.com/updated")
+            self.assertEqual(song["tags"], "rock,live")
             self.assertEqual(song["content"], "[Verse]\n[ch]G[/ch]\nNew words")
 
         page = self.client.get(f"/song/{self.song_id}").get_data(as_text=True)
@@ -603,6 +812,9 @@ class EditSongTests(unittest.TestCase):
         self.assertIn("New Artist", page)
         self.assertIn("New words", page)
         self.assertIn("Drop D", page)
+        self.assertIn("New notes", page)
+        self.assertIn('href="https://example.com/updated"', page)
+        self.assertIn("#rock", page)
 
     def test_edit_defaults_blank_tuning_and_rejects_empty_fields(self):
         response = self.client.post(
@@ -729,6 +941,42 @@ class LegacyDatabaseMigrationTests(unittest.TestCase):
         create_app(self.database)
         with app.app_context():
             self.assertEqual(db.get_song(1)["tuning"], db.DEFAULT_TUNING)
+
+    def test_migrates_schema_before_notes_source_and_tags(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            database_path = str(Path(tempdir) / "previous.db")
+            connection = sqlite3.connect(database_path)
+            connection.executescript(PRE_NOTES_SCHEMA)
+            connection.execute(
+                """INSERT INTO songs
+                       (title, artist, content, tuning, capo, rating,
+                        created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    "Previous Song",
+                    "Previous Artist",
+                    "G",
+                    "Drop D",
+                    2,
+                    4,
+                    "2025-01-02T03:04:05Z",
+                    "2025-02-03T04:05:06Z",
+                ),
+            )
+            connection.commit()
+            connection.close()
+
+            app = create_app(database_path)
+            with app.app_context():
+                song = db.get_song(1)
+                self.assertEqual(song["title"], "Previous Song")
+                self.assertEqual(song["tuning"], "Drop D")
+                self.assertEqual(song["capo"], 2)
+                self.assertEqual(song["rating"], 4)
+                self.assertEqual(song["notes"], "")
+                self.assertEqual(song["source_url"], "")
+                self.assertEqual(song["tags"], "")
+                self.assertEqual(set(song.keys()), db.TARGET_COLUMNS)
 
 
 if __name__ == "__main__":

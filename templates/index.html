@@ -18,9 +18,34 @@
 
 <section class="library" aria-labelledby="library-heading">
   <div class="toolbar">
-    <h2 id="library-heading">All songs <span class="count">{{ total }}</span></h2>
+    <h2 id="library-heading">All songs <span class="count">{{ songs|length }}{% if has_filters %} of {{ total }}{% endif %}</span></h2>
     <form class="filters" method="get" action="{{ url_for('index') }}" role="search">
-      <input type="search" name="q" value="{{ query }}" placeholder="Search title or artist" aria-label="Search songs" autocomplete="off">
+      <input type="search" name="q" value="{{ query }}" placeholder="Search title, artist, notes or tags" aria-label="Search songs" autocomplete="off">
+      <select name="tag" aria-label="Filter by tag" onchange="this.form.submit()">
+        <option value="">All tags</option>
+        {% if tag and tag not in tags %}
+          <option value="{{ tag }}" selected>#{{ tag }}</option>
+        {% endif %}
+        {% for option in tags %}
+          <option value="{{ option }}" {% if tag == option %}selected{% endif %}>#{{ option }}</option>
+        {% endfor %}
+      </select>
+      <select name="rating" aria-label="Filter by rating" onchange="this.form.submit()">
+        <option value="" {% if not rating %}selected{% endif %}>Any rating</option>
+        <option value="5" {% if rating == '5' %}selected{% endif %}>5 stars</option>
+        <option value="4" {% if rating == '4' %}selected{% endif %}>4+ stars</option>
+        <option value="3" {% if rating == '3' %}selected{% endif %}>3+ stars</option>
+        <option value="0" {% if rating == '0' %}selected{% endif %}>Unrated</option>
+      </select>
+      <select name="tuning" aria-label="Filter by tuning" onchange="this.form.submit()">
+        <option value="">Any tuning</option>
+        {% if tuning and tuning not in tunings %}
+          <option value="{{ tuning }}" selected>{{ tuning|tuning_label }}</option>
+        {% endif %}
+        {% for option in tunings %}
+          <option value="{{ option }}" {% if tuning == option %}selected{% endif %}>{{ option|tuning_label }}</option>
+        {% endfor %}
+      </select>
       <select name="sort" aria-label="Sort songs" onchange="this.form.submit()">
         <option value="recent" {% if sort == 'recent' %}selected{% endif %}>Recently added</option>
         <option value="title" {% if sort == 'title' %}selected{% endif %}>Title A–Z</option>
@@ -28,6 +53,9 @@
         <option value="rating" {% if sort == 'rating' %}selected{% endif %}>Best rated</option>
       </select>
       <button class="btn btn-ghost" type="submit">Search</button>
+      {% if has_filters %}
+        <a class="filter-clear" href="{{ url_for('index', sort=sort) }}">Clear</a>
+      {% endif %}
     </form>
   </div>
 
@@ -43,7 +71,15 @@
       </div>
       {% for song in songs %}
         <a class="song-row" href="{{ url_for('song_detail', song_id=song['id']) }}" role="listitem">
-          <span class="song-title">{{ song['title'] }}</span>
+          <span class="song-title">
+            {{ song['title'] }}
+            {% set song_tags = song['tags']|tag_list %}
+            {% if song_tags %}
+              <span class="song-tags" aria-label="Tags">
+                {% for song_tag in song_tags %}<span class="song-tag">#{{ song_tag }}</span>{% endfor %}
+              </span>
+            {% endif %}
+          </span>
           <span class="song-artist">{{ song['artist'] }}</span>
           <span class="song-cell song-capo">
             <span class="song-cell-label">Capo</span>
@@ -68,8 +104,8 @@
     </div>
   {% else %}
     <div class="empty-state">
-      <p class="empty-title">No songs match “{{ query }}”</p>
-      <p><a href="{{ url_for('index') }}">Clear the search</a> to see all {{ total }} songs.</p>
+      <p class="empty-title">No songs match these filters</p>
+      <p><a href="{{ url_for('index') }}">Clear the filters</a> to see all {{ total }} songs.</p>
     </div>
   {% endif %}
 </section>

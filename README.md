@@ -1,9 +1,9 @@
 # Songtrove
 
 A self-hosted chord and lyric library for guitar. Add a song by hand — title,
-artist, tuning, capo and the full chord/lyric sheet — and keep it in a local
-SQLite database. Each song gets a 1–5 star performance rating and a capo setting
-that transposes the displayed chord names.
+artist, tuning, capo, notes, source link, tags and the full chord/lyric sheet —
+and keep it in a local SQLite database. Each song gets a 1–5 star performance
+rating and a capo setting that transposes the displayed chord names.
 
 Repository: <https://github.com/maxalzamora/songtrove>
 
@@ -17,11 +17,11 @@ on the **Add song** page and stored locally.
 
 ## Features
 
-- Manual song entry with title, artist, tuning, capo, performance rating and
-  chord/lyric text. Standard tuning (`E A D G B E`) is used when no other tuning
-  is entered.
+- Manual song entry with title, artist, tuning, capo, performance rating, optional
+  notes, a source URL and tags, plus the chord/lyric text. Standard tuning
+  (`E A D G B E`) is used when no other tuning is entered.
 - A compact song list makes a large library quick to scan, with title, artist,
-  capo, tuning and rating visible at a glance.
+  tags, capo, tuning and rating visible at a glance.
 - Plain-text chord sheets are kept in a fixed-width layout. Chord-only lines that
   you paste or type are detected and highlighted automatically, while lyrics stay
   plain.
@@ -30,10 +30,11 @@ on the **Add song** page and stored locally.
 - The displayed chord names transpose down by the capo amount, so they are the
   shapes to play while the song keeps its original pitch. The sheet updates
   immediately on the page.
-- An **Edit song** page for changing the title, artist, tuning, capo, rating and
-  chord sheet in one place. Deleting whole lines removes filler, author notes or
-  unwanted sections.
-- Search by title or artist; sort by recently added, title, artist or rating.
+- An **Edit song** page for changing the title, artist, tuning, capo, rating,
+  notes, source URL, tags and chord sheet in one place. Deleting whole lines
+  removes filler, author notes or unwanted sections.
+- Search by title, artist, notes or tags, then narrow the list by tag, rating or
+  tuning. Sort by recently added, title, artist or rating.
 - Stored locally in SQLite and available offline.
 - Password-protected access with CSRF protection, so the library can be
   deployed publicly without exposing it.
@@ -105,7 +106,8 @@ restore it through **Import songs**. `data/` is ignored by git so personal data
 is not committed by accident.
 
 The database initializer upgrades older library databases in place. Existing
-songs, capo settings, ratings and IDs are preserved.
+songs, capo settings, ratings and IDs are preserved; new notes, source links and
+tags start empty.
 
 ## Deployment
 
@@ -145,10 +147,10 @@ python3 -m unittest discover -s tests
 
 The tests cover HTML escaping, the "no characters move" rendering guarantee,
 chord auto-detection, capo transposition, the plain-text editor's
-line-preserving merge, authentication and CSRF, the compact song list, manual
-song entry and its validation, the full song editor, JSON export and import, and
-the in-place database upgrade. The suite uses only the standard library, so it
-needs no extra test dependency.
+line-preserving merge, authentication and CSRF, the compact song list, search and
+filters, manual song entry and its validation, notes/source links/tags, the full
+song editor, JSON export and import, and the in-place database upgrade. The suite
+uses only the standard library, so it needs no extra test dependency.
 
 ## Good to know
 
